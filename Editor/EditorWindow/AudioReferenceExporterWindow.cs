@@ -53,6 +53,7 @@ namespace AudioReferenceEditor
             rootContainer.Add(toolbar);
 
             AddNewToolbarButton("Open Google Console", () => Process.Start("https://console.developers.google.com"));
+            AddNewToolbarButton("Open Spreadsheet", OpenGoogleSheetData);
             AddNewToolbarButton("Setup Video", () => Process.Start("https://www.youtube.com/watch?v=afTiNU6EoA8"));
              
             credentialsPathTextField = Utilities.CreateTextField("client_secret.json");
