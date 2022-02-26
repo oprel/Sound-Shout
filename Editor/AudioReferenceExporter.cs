@@ -8,6 +8,7 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
+using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -39,6 +40,24 @@ namespace AudioReferenceEditor
         private const string STANDARD_RANGE = START_RANGE + ":" + END_RANGE;
         private static int totalOperations, currentOperation;
 
+        private static List<string> GetSpreadsheetTabsList(string spreadSheetURL)
+        {
+            var ssRequest = Service.Spreadsheets.Get(spreadSheetURL);
+            Spreadsheet ss = ssRequest.Execute();
+            List<string> sheetTabs = new List<string>();
+            foreach (Sheet sheet in ss.Sheets)
+            {
+                if (sheet.Properties.Title == OVERVIEW_TAB)
+                {
+                    continue;
+                }
+
+                sheetTabs.Add(sheet.Properties.Title);
+            }
+
+            return sheetTabs;
+        }
+        
         private static void ConfigureGoogleCredentials()
         {
             GoogleCredential credential;
@@ -59,19 +78,7 @@ namespace AudioReferenceEditor
         {
             try
             {
-                var ssRequest = Service.Spreadsheets.Get(spreadSheetURL);
-                Spreadsheet ss = ssRequest.Execute();
-                List<string> sheetTabs = new List<string>();
-                foreach (Sheet sheet in ss.Sheets)
-                {
-                    if (sheet.Properties.Title == OVERVIEW_TAB)
-                    {
-                        continue;
-                    }
-
-                    sheetTabs.Add(sheet.Properties.Title);
-                }
-
+                var sheetTabs = GetSpreadsheetTabsList(spreadSheetURL);
                 var audioRefs = GetAllAudioReferences();
                 ReadEntries(spreadSheetURL, ref audioRefs, ref sheetTabs);
             }
@@ -286,7 +293,7 @@ namespace AudioReferenceEditor
 #endif
         }
 
-        private static void CreateEntries(string spreadsheetID, ref AudioReference[] audioReferences)
+        private static void CreateEntries(string spreadsheetURL, ref AudioReference[] audioReferences)
         {
             Dictionary<string, int> categories = new Dictionary<string, int>();
 
@@ -335,9 +342,21 @@ namespace AudioReferenceEditor
             
             data.Add(updateText);
 
+            var ssRequest = Service.Spreadsheets.Get(spreadsheetURL);
+            Spreadsheet ss = ssRequest.Execute();
+
+            var sheet = new Sheet();
+            sheet.Properties = new SheetProperties();
+            sheet.Properties.Title = "Sheet1";
+            ss.Sheets = new List<Sheet> { sheet };
+
+            var newSheet = Service.Spreadsheets.Create(ss).Execute();
+            Debug.Log($"{JsonConvert.SerializeObject(newSheet)}");
+            return;
+
             BatchUpdateValuesRequest requestBody = new BatchUpdateValuesRequest { ValueInputOption = "USER_ENTERED", Data = data };
 
-            SpreadsheetsResource.ValuesResource.BatchUpdateRequest request = Service.Spreadsheets.Values.BatchUpdate(requestBody, spreadsheetID);
+            SpreadsheetsResource.ValuesResource.BatchUpdateRequest request = Service.Spreadsheets.Values.BatchUpdate(requestBody, spreadsheetURL);
             request.Execute();
 
 #if DEBUGGING
