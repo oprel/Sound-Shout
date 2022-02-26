@@ -35,6 +35,12 @@ public class AudioReference : ScriptableObject
         assetPath = assetPath.Replace("Assets/Audio/", "");
         assetPath = assetPath.Replace(".asset", "");
         
+        int lastSlashIndex = assetPath.IndexOf('/');
+        string unityAssetFolderPath = assetPath.Substring(0, lastSlashIndex);
+        category = unityAssetFolderPath;
+
+        eventName = assetPath;
+        
         string finalEventName = "event:/" + assetPath;
 
         if (fullEventPath != finalEventName)

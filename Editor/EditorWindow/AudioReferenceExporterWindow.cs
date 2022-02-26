@@ -70,6 +70,7 @@ namespace AudioReferenceEditor
             spreadSheetBox.Add(Utilities.CreateButton("Open Spreadsheet", OpenGoogleSheetData));
             spreadSheetBox.Add(Utilities.CreateButton("Update Spreadsheet", () => { AudioReferenceExporter.UpdateAudioSpreadSheet(LoadSettings().spreadSheetURL); }));
             spreadSheetBox.Add(Utilities.CreateButton("Fetch Spreadsheet Changes", () => { AudioReferenceExporter.FetchSpreadsheetChanges(LoadSettings().spreadSheetURL); }));
+            spreadSheetBox.Add(Utilities.CreateButton("Upload Local Changes", () => { AudioReferenceExporter.UploadLocalChanges(LoadSettings().spreadSheetURL); }));
 
             spreadsheetURLTextField = Utilities.CreateTextField("Spreadsheet URL");
             spreadSheetBox.Add(spreadsheetURLTextField);

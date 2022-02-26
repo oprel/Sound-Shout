@@ -25,6 +25,7 @@ namespace AudioReferenceEditor
                 {
                     ConfigureGoogleCredentials();
                 }
+
                 return service;
             }
         }
@@ -32,7 +33,7 @@ namespace AudioReferenceEditor
         private enum UsedRows { EventName = 0, Is3D = 1, Looping = 2, Parameters = 3, Description = 4, Feedback = 5, ImplementStatus = 6 }
         private static readonly string[] scopes = { SheetsService.Scope.Spreadsheets };
         private const string OVERVIEW_TAB = "~Overview";
-        private const string LAST_UPDATED_RANGE = OVERVIEW_TAB + "!I1";
+        private const string LAST_UPDATED_RANGE = OVERVIEW_TAB + "!H1";
         private const string START_RANGE = "A2";
         private const string END_RANGE = "G";
         private const string STANDARD_RANGE = START_RANGE + ":" + END_RANGE;
@@ -61,16 +62,16 @@ namespace AudioReferenceEditor
                 var ssRequest = Service.Spreadsheets.Get(spreadSheetURL);
                 Spreadsheet ss = ssRequest.Execute();
                 List<string> sheetTabs = new List<string>();
-                foreach(Sheet sheet in ss.Sheets)
+                foreach (Sheet sheet in ss.Sheets)
                 {
                     if (sheet.Properties.Title == OVERVIEW_TAB)
                     {
                         continue;
                     }
-                    
+
                     sheetTabs.Add(sheet.Properties.Title);
                 }
-                
+
                 var audioRefs = GetAllAudioReferences();
                 ReadEntries(spreadSheetURL, ref audioRefs, ref sheetTabs);
             }
@@ -80,6 +81,12 @@ namespace AudioReferenceEditor
                 Console.WriteLine(e);
                 throw;
             }
+        }
+
+        public static void UploadLocalChanges(string spreadSheetURL)
+        {
+            var allAudioReferences = GetAllAudioReferences();
+            CreateEntries(spreadSheetURL, ref allAudioReferences);
         }
         
         public static void UpdateAudioSpreadSheet(string spreadSheetURL)
@@ -93,7 +100,7 @@ namespace AudioReferenceEditor
                 var audioRefs = GetAllAudioReferences();
 
                 var tabCategories = GetAudioReferenceCategories(audioRefs);
-                
+
                 currentOperation++;
                 ReadEntries(spreadSheetURL, ref audioRefs, ref tabCategories);
 
@@ -125,10 +132,10 @@ namespace AudioReferenceEditor
             EditorUtility.DisplayProgressBar("Updating AudioReferences", message, (progress + currentOperation) / totalOperations);
         }
 
-        private static List<string> GetAudioReferenceCategories(AudioReference[] audioReferences)
+        private static List<string> GetAudioReferenceCategories(IReadOnlyList<AudioReference> audioReferences)
         {
             var tabCategories = new List<string>();
-            for (int i = 0; i < audioReferences.Length; i++)
+            for (int i = 0; i < audioReferences.Count; i++)
             {
                 var audioReference = audioReferences[i];
                 if (!tabCategories.Contains(audioReference.category))
@@ -138,21 +145,6 @@ namespace AudioReferenceEditor
             }
 
             return tabCategories;
-        }
-        
-        private static AudioReference[] GetAllAudioReferences()
-        {
-            string[] audioReferences = AssetDatabase.FindAssets("t:AudioReference");
-            AudioReference[] audioReferencesArray = new AudioReference[audioReferences.Length];
-
-            for (int i = 0; i < audioReferences.Length; i++)
-            {
-                var audioReference = AssetDatabase.LoadAssetAtPath<AudioReference>(AssetDatabase.GUIDToAssetPath(audioReferences[i]));
-                audioReferencesArray[i] = audioReference;
-                audioReference.SetupVariablesIfNeeded();
-            }
-            
-            return audioReferencesArray;
         }
 
         private static void ReadEntries(string spreadsheetURL, ref AudioReference[] audioReferences, ref List<string> sheets)
@@ -171,7 +163,6 @@ namespace AudioReferenceEditor
                     foreach (var row in values)
                     {
                         string eventName = $"{sheets[sheetIndex]}/{(string)row[(int)UsedRows.EventName]}";
-                        Debug.LogError(sheets[sheetIndex]);
                         bool is3D = (string)row[(int)UsedRows.Is3D] == "3D";
                         bool isLooping = (string)row[(int)UsedRows.Looping] == "Loop";
                         string parameters = (string)row[(int)UsedRows.Parameters];
@@ -199,7 +190,7 @@ namespace AudioReferenceEditor
                         else if (newAudioReference)
                         {
                             var newSound = CreateNewAudioReferenceAsset(eventName, is3D, isLooping, parameters, description, feedback, implementStatus);
-                            newAudioRefsList.Add(newSound); 
+                            newAudioRefsList.Add(newSound);
                         }
 #if DEBUGGING
                         Debug.Log($"Name: \"{eventName}\" " + $"3D: {is3D} - " + $"Loop: {isLooping} - " + $"Description: {description}" + $"Status: {implementStatus.ToString()}");
@@ -211,9 +202,9 @@ namespace AudioReferenceEditor
                     Debug.Log($"No data was found in tab: \"{sheets[sheetIndex]}\"");
                 }
             }
-            
+
             int currentSize = audioReferences.Length;
-            int newSize = currentSize + newAudioRefsList.Count; 
+            int newSize = currentSize + newAudioRefsList.Count;
             if (currentSize < newSize)
             {
                 newAudioRefsList.AddRange(audioReferences);
@@ -225,21 +216,21 @@ namespace AudioReferenceEditor
         {
             AudioReference newAudioReference = ScriptableObject.CreateInstance<AudioReference>();
             Undo.RecordObject(newAudioReference, "Created new AudioReference");
-            
+
             // Example eventName: "UI/Menus/Album_Open"
             string assetPath = $"Assets/Audio/{eventName}.asset";
 
             // Split assetPath so we get parent folder
             // Example Assets/Audio/UI/Menus <--
             int lastSlashIndex = assetPath.LastIndexOf('/');
-            string unityAssetFolderPath = assetPath.Substring(0, lastSlashIndex); 
-            
+            string unityAssetFolderPath = assetPath.Substring(0, lastSlashIndex);
+
             try
             {
                 if (!AssetDatabase.IsValidFolder(unityAssetFolderPath))
                 {
                     string unityProjectPath = Application.dataPath.Replace("Assets", "");
-                    string absoluteAssetParentFolderPath = $"{unityProjectPath}{unityAssetFolderPath}"; 
+                    string absoluteAssetParentFolderPath = $"{unityProjectPath}{unityAssetFolderPath}";
                     Directory.CreateDirectory(absoluteAssetParentFolderPath);
                     AssetDatabase.Refresh();
                 }
@@ -247,7 +238,7 @@ namespace AudioReferenceEditor
                 AssetDatabase.CreateAsset(newAudioReference, assetPath);
                 newAudioReference.SetupVariables(is3D, isLooping, parameters, description, feedback, implementStatus);
                 newAudioReference.UpdateName();
-            
+
                 Debug.Log($"<color=cyan>Created new AudioReference: \"{eventName}\"</color>");
                 return newAudioReference;
             }
@@ -259,6 +250,21 @@ namespace AudioReferenceEditor
             }
         }
 
+        private static AudioReference[] GetAllAudioReferences()
+        {
+            string[] audioReferences = AssetDatabase.FindAssets("t:AudioReference");
+            AudioReference[] audioReferencesArray = new AudioReference[audioReferences.Length];
+
+            for (int i = 0; i < audioReferences.Length; i++)
+            {
+                var audioReference = AssetDatabase.LoadAssetAtPath<AudioReference>(AssetDatabase.GUIDToAssetPath(audioReferences[i]));
+                audioReferencesArray[i] = audioReference;
+                audioReference.SetupVariablesIfNeeded();
+            }
+
+            return audioReferencesArray;
+        }
+        
         private static void ClearAllSheetsRequest(string spreadsheetID, ref List<string> sheets)
         {
             List<string> ranges = new List<string>();
@@ -282,21 +288,11 @@ namespace AudioReferenceEditor
 
         private static void CreateEntries(string spreadsheetID, ref AudioReference[] audioReferences)
         {
-            // Check if fmod event exists
-            //RuntimeManager.StudioSystem.getEvent(id, out desc);
-
             Dictionary<string, int> categories = new Dictionary<string, int>();
 
-            // Go though all audio refs and add them as their own value range
-            // It's like a class with values.
-            // Doing this adds all values in one go instead of doing multiple individual requests
             List<ValueRange> data = new List<ValueRange>();
             for (int i = 0; i < audioReferences.Length; i++)
             {
-                UpdateProgressBar($"Uploading AudioReference: {audioReferences[i]}", (float)i / audioReferences.Length);
-
-                // Update the audio reference's info
-                // To make sure it's correct before uploading
                 audioReferences[i].UpdateName();
 
                 // If category don't exist, create it
@@ -325,17 +321,18 @@ namespace AudioReferenceEditor
                 var valueRange = new ValueRange
                 {
                     Values = new List<IList<object>> { objectList },
-                    Range = $"{audioReferences[i].category}!A" + categories[audioReferences[i].category],
+                    Range = $"{audioReferences[i].category}!A{categories[audioReferences[i].category]}"
                 };
                 data.Add(valueRange);
             }
 
-            // Add "Updated" text to spreadsheet
+            // Last Updated Text
             var updateText = new ValueRange
             {
                 Values = new List<IList<object>> { new object[] { "Updated\n" + DateTime.Now.ToString("g", CultureInfo.InvariantCulture) } },
                 Range = LAST_UPDATED_RANGE
             };
+            
             data.Add(updateText);
 
             BatchUpdateValuesRequest requestBody = new BatchUpdateValuesRequest { ValueInputOption = "USER_ENTERED", Data = data };
@@ -347,5 +344,7 @@ namespace AudioReferenceEditor
         Debug.Log($"Added {audioReferences.Length} audio refs: {JsonConvert.SerializeObject(requestBody)}");
 #endif
         }
+
+       
     }
 }
