@@ -109,6 +109,14 @@ public class AudioReference : ScriptableObject
         this.feedback = feedback;
         implementStatus = status;
     }
+
+    public void SetupVariablesIfNeeded()
+    {
+        if (string.IsNullOrEmpty(fullEventPath))
+        {
+            UpdateName();
+        }
+    }
     
 #endif
 

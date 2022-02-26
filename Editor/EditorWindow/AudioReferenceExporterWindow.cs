@@ -21,7 +21,7 @@ namespace AudioReferenceEditor
 
         private TextField credentialsPathTextField;
         private TextField spreadsheetURLTextField;
-        private Toolbar toolbar;
+        private Toolbar mainToolbar;
         
         public class ExporterSettings
         {
@@ -49,34 +49,36 @@ namespace AudioReferenceEditor
             // Create Title & Logo
             rootContainer.Add(CreateToolTitleVisualElement());
 
-            toolbar = new Toolbar();
-            rootContainer.Add(toolbar);
+            mainToolbar = new Toolbar();
+            rootContainer.Add(mainToolbar);
 
-            AddNewToolbarButton("Open Google Console", () => Process.Start("https://console.developers.google.com"));
-            AddNewToolbarButton("Open Spreadsheet", OpenGoogleSheetData);
-            AddNewToolbarButton("Setup Video", () => Process.Start("https://www.youtube.com/watch?v=afTiNU6EoA8"));
-             
+            var credentialsBox = new Box();
+            CreateSelectCredentialsButton(credentialsBox);
             credentialsPathTextField = Utilities.CreateTextField("client_secret.json");
             credentialsPathTextField.value = HasClientSecretsFile() ? CLIENT_SECRET_PATH : "??";
             credentialsPathTextField.SetEnabled(false);
-            rootContainer.Add(credentialsPathTextField);
+            credentialsBox.Add(credentialsPathTextField);
 
-            Button updateSpreadsheetBtn = Utilities.CreateButton("Update SpreadSheet", () => { AudioReferenceExporter.UpdateAudioSpreadSheet(LoadSettings().spreadSheetURL); });
-            rootContainer.Add(updateSpreadsheetBtn);
-
-            Button fetchChangesBtn = Utilities.CreateButton("Fetch SpreadSheet Changes", () => { AudioReferenceExporter.FetchSpreadSheetChanges(LoadSettings().spreadSheetURL); });
-            rootContainer.Add(fetchChangesBtn);
+            rootContainer.Add(credentialsBox);
             
-            CreateSelectCredentialsButton(rootContainer);
+            Box spreadSheetBox = new Box();
+            rootContainer.Add(spreadSheetBox);
 
-            spreadsheetURLTextField = Utilities.CreateTextField("SpreadSheet URL");
-            rootContainer.Add(spreadsheetURLTextField);
+            AddNewToolbarButton(mainToolbar, "Open Google Console", () => Process.Start("https://console.developers.google.com"));
+            AddNewToolbarButton(mainToolbar,"Setup Video", () => Process.Start("https://www.youtube.com/watch?v=afTiNU6EoA8"));
+            
+            spreadSheetBox.Add(Utilities.CreateButton("Open Spreadsheet", OpenGoogleSheetData));
+            spreadSheetBox.Add(Utilities.CreateButton("Update Spreadsheet", () => { AudioReferenceExporter.UpdateAudioSpreadSheet(LoadSettings().spreadSheetURL); }));
+            spreadSheetBox.Add(Utilities.CreateButton("Fetch Spreadsheet Changes", () => { AudioReferenceExporter.FetchSpreadsheetChanges(LoadSettings().spreadSheetURL); }));
+
+            spreadsheetURLTextField = Utilities.CreateTextField("Spreadsheet URL");
+            spreadSheetBox.Add(spreadsheetURLTextField);
 
             rootContainer.Add(Utilities.CreateButton("Save Settings", SaveSettings));
             SetupValues();
         }
 
-        private void AddNewToolbarButton(string text, Action onClicked)
+        private static void AddNewToolbarButton(Toolbar toolbar, string text, Action onClicked)
         {
             var button = Utilities.CreateButton(text, onClicked);
             toolbar.Add(button);

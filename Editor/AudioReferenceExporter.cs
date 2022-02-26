@@ -10,22 +10,12 @@ using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace AudioReferenceEditor
 {
     public static class AudioReferenceExporter
     {
-        private enum UsedRows
-        {
-            EventName = 0,
-            Is3D = 1,
-            Looping = 2,
-            Parameters = 3,
-            Description = 4,
-            Feedback = 5,
-            ImplementStatus = 6
-        }
-
         private static SheetsService service;
         private static SheetsService Service
         {
@@ -33,32 +23,56 @@ namespace AudioReferenceEditor
             {
                 if (service == null)
                 {
-                    SetupCredentials();
+                    ConfigureGoogleCredentials();
                 }
                 return service;
             }
         }
-        
-        private static readonly string[] scopes = { SheetsService.Scope.Spreadsheets };
 
-        private const string LAST_UPDATED_RANGE = "~Overview!I1";
+        private enum UsedRows { EventName = 0, Is3D = 1, Looping = 2, Parameters = 3, Description = 4, Feedback = 5, ImplementStatus = 6 }
+        private static readonly string[] scopes = { SheetsService.Scope.Spreadsheets };
+        private const string OVERVIEW_TAB = "~Overview";
+        private const string LAST_UPDATED_RANGE = OVERVIEW_TAB + "!I1";
         private const string START_RANGE = "A2";
         private const string END_RANGE = "G";
         private const string STANDARD_RANGE = START_RANGE + ":" + END_RANGE;
-
-        // Progress bar things
         private static int totalOperations, currentOperation;
 
-        
+        private static void ConfigureGoogleCredentials()
+        {
+            GoogleCredential credential;
+            const string secretsPath = AudioReferenceExporterWindow.CLIENT_SECRET_PATH;
+            using (var stream = new FileStream(secretsPath, FileMode.Open, FileAccess.Read))
+            {
+                credential = GoogleCredential.FromStream(stream).CreateScoped(scopes);
+            }
 
-        public static void FetchSpreadSheetChanges(string spreadSheetURL)
+            service = new SheetsService(new BaseClientService.Initializer
+            {
+                HttpClientInitializer = credential,
+                ApplicationName = AudioReferenceExporterWindow.APPLICATION_NAME,
+            });
+        }
+
+        public static void FetchSpreadsheetChanges(string spreadSheetURL)
         {
             try
             {
-                var audioRefs = FindAllAudioReferences(out var tabCategories);
-                tabCategories.Add("Generic");
-                ReadEntries(spreadSheetURL, ref audioRefs, ref tabCategories);
-                EditorUtility.ClearProgressBar();
+                var ssRequest = Service.Spreadsheets.Get(spreadSheetURL);
+                Spreadsheet ss = ssRequest.Execute();
+                List<string> sheetTabs = new List<string>();
+                foreach(Sheet sheet in ss.Sheets)
+                {
+                    if (sheet.Properties.Title == OVERVIEW_TAB)
+                    {
+                        continue;
+                    }
+                    
+                    sheetTabs.Add(sheet.Properties.Title);
+                }
+                
+                var audioRefs = GetAllAudioReferences();
+                ReadEntries(spreadSheetURL, ref audioRefs, ref sheetTabs);
             }
             catch (Exception e)
             {
@@ -76,8 +90,10 @@ namespace AudioReferenceEditor
                 totalOperations = 5; // Number of methods, used to calculate percentage for 
 
                 currentOperation = 0;
-                var audioRefs = FindAllAudioReferences(out var tabCategories);
+                var audioRefs = GetAllAudioReferences();
 
+                var tabCategories = GetAudioReferenceCategories(audioRefs);
+                
                 currentOperation++;
                 ReadEntries(spreadSheetURL, ref audioRefs, ref tabCategories);
 
@@ -104,65 +120,48 @@ namespace AudioReferenceEditor
             }
         }
 
-        private static void SetupCredentials()
-        {
-            GoogleCredential credential;
-            const string secretsPath = AudioReferenceExporterWindow.CLIENT_SECRET_PATH;
-            using (var stream = new FileStream(secretsPath, FileMode.Open, FileAccess.Read))
-            {
-                credential = GoogleCredential.FromStream(stream).CreateScoped(scopes);
-            }
-
-            service = new SheetsService(new BaseClientService.Initializer
-            {
-                HttpClientInitializer = credential,
-                ApplicationName = AudioReferenceExporterWindow.APPLICATION_NAME,
-            });
-        }
-
         private static void UpdateProgressBar(string message, float progress)
         {
             EditorUtility.DisplayProgressBar("Updating AudioReferences", message, (progress + currentOperation) / totalOperations);
         }
 
-        private static AudioReference[] FindAllAudioReferences(out List<string> tabCategories)
+        private static List<string> GetAudioReferenceCategories(AudioReference[] audioReferences)
+        {
+            var tabCategories = new List<string>();
+            for (int i = 0; i < audioReferences.Length; i++)
+            {
+                var audioReference = audioReferences[i];
+                if (!tabCategories.Contains(audioReference.category))
+                {
+                    tabCategories.Add(audioReference.category);
+                }
+            }
+
+            return tabCategories;
+        }
+        
+        private static AudioReference[] GetAllAudioReferences()
         {
             string[] audioReferences = AssetDatabase.FindAssets("t:AudioReference");
             AudioReference[] audioReferencesArray = new AudioReference[audioReferences.Length];
-            tabCategories = new List<string>();
 
             for (int i = 0; i < audioReferences.Length; i++)
             {
                 var audioReference = AssetDatabase.LoadAssetAtPath<AudioReference>(AssetDatabase.GUIDToAssetPath(audioReferences[i]));
                 audioReferencesArray[i] = audioReference;
-
-                if (string.IsNullOrEmpty(audioReference.fullEventPath))
-                {
-                    Debug.LogError($"AudioReference \"{audioReference.name}\" didn't have it's FMOD setup. Fixing that, make sure its correct.", audioReference);
-                    audioReference.UpdateName();
-                }
-
-                if (!tabCategories.Contains(audioReference.category))
-                {
-                    tabCategories.Add(audioReference.category);
-                }
-
-                UpdateProgressBar("Finding all audio references", (float)i / audioReferences.Length);
+                audioReference.SetupVariablesIfNeeded();
             }
-
+            
             return audioReferencesArray;
         }
 
-
-        private static void ReadEntries(string spreadsheetID, ref AudioReference[] audioReferences, ref List<string> sheets)
+        private static void ReadEntries(string spreadsheetURL, ref AudioReference[] audioReferences, ref List<string> sheets)
         {
             List<AudioReference> newAudioRefsList = new List<AudioReference>(10);
-
-            // Loop through all tabs inside the
-            for (int i = 0; i < sheets.Count; i++)
+            for (int sheetIndex = 0; sheetIndex < sheets.Count; sheetIndex++)
             {
-                var range = $"{sheets[i]}!{STANDARD_RANGE}";
-                var request = Service.Spreadsheets.Values.Get(spreadsheetID, range);
+                var range = $"{sheets[sheetIndex]}!{STANDARD_RANGE}";
+                var request = Service.Spreadsheets.Values.Get(spreadsheetURL, range);
 
                 ValueRange response = request.Execute();
                 IList<IList<object>> values = response.Values;
@@ -171,7 +170,8 @@ namespace AudioReferenceEditor
                     // Go through each row and their data
                     foreach (var row in values)
                     {
-                        string eventName = (string)row[(int)UsedRows.EventName];
+                        string eventName = $"{sheets[sheetIndex]}/{(string)row[(int)UsedRows.EventName]}";
+                        Debug.LogError(sheets[sheetIndex]);
                         bool is3D = (string)row[(int)UsedRows.Is3D] == "3D";
                         bool isLooping = (string)row[(int)UsedRows.Looping] == "Loop";
                         string parameters = (string)row[(int)UsedRows.Parameters];
@@ -180,72 +180,37 @@ namespace AudioReferenceEditor
 
                         AudioReference.Status implementStatus = (AudioReference.Status)Enum.Parse(typeof(AudioReference.Status), (string)row[(int)UsedRows.ImplementStatus]);
 
-                        UpdateProgressBar($"Updating AudioReference: {eventName}", (float)i / values.Count);
-
-                        bool foundReference = false;
-                        for (int j = 0; j < audioReferences.Length; j++)
+                        bool newAudioReference = true;
+                        string fullEventName = $"event:/{eventName}";
+                        for (int i = 0; i < audioReferences.Length; i++)
                         {
-                            if ("event:/" + eventName == audioReferences[j].fullEventPath)
+                            if (audioReferences[i].fullEventPath == fullEventName)
                             {
-                                audioReferences[j].ApplyChanges(is3D, isLooping, parameters, description, feedback, implementStatus);
-                                foundReference = true;
+                                audioReferences[i].ApplyChanges(is3D, isLooping, parameters, description, feedback, implementStatus);
+                                newAudioReference = false;
                                 break;
                             }
                         }
 
-                        // If false means that the AudioReference we're looking for has only been created inside the spreadsheet
-                        // Rumsklang probably created a cool sound and want it implemented.
                         if (implementStatus == AudioReference.Status.Delete)
                         {
                             Debug.Log($"Skipped creating audio reference for \"{eventName}\" as it's marked as Delete!");
                         }
-                        else if (!foundReference)
+                        else if (newAudioReference)
                         {
-                            // Let's say the one we need to create has a eventName value of "Harbor/CoolNPC/Elias_Talk"
-                            string assetPath = "Assets/Audio/" + eventName + ".asset"; // Assets/Audio/Harbor/CoolNPC/Elias_Talk.asset
-
-                            int lastSlashIndex = assetPath.LastIndexOf('/');
-                            string fullAssetFolderPath = assetPath.Substring(0, lastSlashIndex); // Assets/Audio/Harbor/CoolNPC
-
-                            // Get the folder where we should put the file
-                            lastSlashIndex = fullAssetFolderPath.LastIndexOf('/');
-                            string folderToCreate = fullAssetFolderPath.Substring(lastSlashIndex + 1); // Only the folder part "CoolNPC"
-                            fullAssetFolderPath = assetPath.Substring(0, lastSlashIndex);
-
-                            // Create folder if it doesn't exist
-                            if (!AssetDatabase.IsValidFolder($"{fullAssetFolderPath}/{folderToCreate}"))
-                            {
-                                Debug.Log($"Creating folder: \"{folderToCreate}\" - fullAssetFolderPath: \"{fullAssetFolderPath}\"");
-                                AssetDatabase.CreateFolder(fullAssetFolderPath, folderToCreate);
-                            }
-
-                            // // Create a new AudioReference and place it in it's correct folder
-                            AudioReference newAudioReference = ScriptableObject.CreateInstance<AudioReference>();
-                            Undo.RecordObject(newAudioReference, "Created new AudioReference");
-
-                            // Setup all variables 
-                            newAudioReference.SetupVariables(is3D, isLooping, parameters, description, feedback, implementStatus);
-                            AssetDatabase.CreateAsset(newAudioReference, assetPath);
-
-                            newAudioReference.UpdateName(); // Make sure the asset has correct FmodName set to it
-
-                            newAudioRefsList.Add(newAudioReference);
-
-                            Debug.Log($"<color=cyan>AudioReferenceExporter: Created new AudioReference from spreadsheet: {eventName}</color>");
+                            var newSound = CreateNewAudioReferenceAsset(eventName, is3D, isLooping, parameters, description, feedback, implementStatus);
+                            newAudioRefsList.Add(newSound); 
                         }
-
 #if DEBUGGING
-                    Debug.Log($"Name: \"{eventName}\" " + $"3D: {is3D} - " + $"Loop: {isLooping} - " + $"Description: {description}" + $"Status: {implementStatus.ToString()}");
+                        Debug.Log($"Name: \"{eventName}\" " + $"3D: {is3D} - " + $"Loop: {isLooping} - " + $"Description: {description}" + $"Status: {implementStatus.ToString()}");
 #endif
                     }
                 }
                 else
                 {
-                    Debug.Log($"No data was found in tab: \"{sheets[i]}\"");
+                    Debug.Log($"No data was found in tab: \"{sheets[sheetIndex]}\"");
                 }
             }
-
-            // Add potential new audio refs to AudioRef array by resizing the array 
             
             int currentSize = audioReferences.Length;
             int newSize = currentSize + newAudioRefsList.Count; 
@@ -253,6 +218,44 @@ namespace AudioReferenceEditor
             {
                 newAudioRefsList.AddRange(audioReferences);
                 audioReferences = newAudioRefsList.ToArray();
+            }
+        }
+
+        private static AudioReference CreateNewAudioReferenceAsset(string eventName, bool is3D, bool isLooping, string parameters, string description, string feedback, AudioReference.Status implementStatus)
+        {
+            AudioReference newAudioReference = ScriptableObject.CreateInstance<AudioReference>();
+            Undo.RecordObject(newAudioReference, "Created new AudioReference");
+            
+            // Example eventName: "UI/Menus/Album_Open"
+            string assetPath = $"Assets/Audio/{eventName}.asset";
+
+            // Split assetPath so we get parent folder
+            // Example Assets/Audio/UI/Menus <--
+            int lastSlashIndex = assetPath.LastIndexOf('/');
+            string unityAssetFolderPath = assetPath.Substring(0, lastSlashIndex); 
+            
+            try
+            {
+                if (!AssetDatabase.IsValidFolder(unityAssetFolderPath))
+                {
+                    string unityProjectPath = Application.dataPath.Replace("Assets", "");
+                    string absoluteAssetParentFolderPath = $"{unityProjectPath}{unityAssetFolderPath}"; 
+                    Directory.CreateDirectory(absoluteAssetParentFolderPath);
+                    AssetDatabase.Refresh();
+                }
+
+                AssetDatabase.CreateAsset(newAudioReference, assetPath);
+                newAudioReference.SetupVariables(is3D, isLooping, parameters, description, feedback, implementStatus);
+                newAudioReference.UpdateName();
+            
+                Debug.Log($"<color=cyan>Created new AudioReference: \"{eventName}\"</color>");
+                return newAudioReference;
+            }
+            catch (Exception e)
+            {
+                AssetDatabase.DeleteAsset(assetPath);
+                Object.DestroyImmediate(newAudioReference);
+                throw new Exception($"Error creating new AudioReference Asset. ERROR: {e.Message}");
             }
         }
 
