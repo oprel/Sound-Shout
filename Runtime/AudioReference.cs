@@ -23,11 +23,11 @@ public class AudioReference : ScriptableObject
     [TextArea] public string description;
     [TextArea] public string feedback;
     
-    public Status implementStatus = Status.Todo;
+    public Status implementStatus = Status.TODO;
     public string category;
     public string eventName;
 
-    public enum Status { Delete, Todo, Created, Implemented, Feedback, Iterate, Done };
+    public enum Status { Delete, TODO, Created, Implemented, Feedback, Iterate, Done };
     
     public void UpdateName()
     {

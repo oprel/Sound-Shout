@@ -27,6 +27,18 @@ namespace AudioReferenceEditor
         }
 
         private static SheetsService service;
+        private static SheetsService Service
+        {
+            get
+            {
+                if (service == null)
+                {
+                    SetupCredentials();
+                }
+                return service;
+            }
+        }
+        
         private static readonly string[] scopes = { SheetsService.Scope.Spreadsheets };
 
         private const string LAST_UPDATED_RANGE = "~Overview!I1";
@@ -37,12 +49,19 @@ namespace AudioReferenceEditor
         // Progress bar things
         private static int totalOperations, currentOperation;
 
-        public static void UpdateAudioSpreadSheet(AudioReferenceExporterWindow.ExporterSettings exporterSettings)
+        
+
+        public static void FetchSpreadSheetChanges(string spreadSheetURL)
+        {
+            var audioRefs = FindAllAudioReferences(out var tabCategories);
+            tabCategories.Add("Generic");
+            ReadEntries(spreadSheetURL, ref audioRefs, ref tabCategories);
+        }
+        
+        public static void UpdateAudioSpreadSheet(string spreadSheetURL)
         {
             try
             {
-                SetupCredentials();
-
                 // Progress bar
                 totalOperations = 5; // Number of methods, used to calculate percentage for 
 
@@ -50,13 +69,13 @@ namespace AudioReferenceEditor
                 var audioRefs = FindAllAudioReferences(out var tabCategories);
 
                 currentOperation++;
-                ReadEntries(exporterSettings.spreadSheetURL, ref audioRefs, ref tabCategories);
+                ReadEntries(spreadSheetURL, ref audioRefs, ref tabCategories);
 
                 currentOperation++;
-                ClearAllSheetsRequest(exporterSettings.spreadSheetURL, ref tabCategories);
+                ClearAllSheetsRequest(spreadSheetURL, ref tabCategories);
 
                 currentOperation++;
-                CreateEntries(exporterSettings.spreadSheetURL, ref audioRefs);
+                CreateEntries(spreadSheetURL, ref audioRefs);
 
                 currentOperation++;
                 UpdateProgressBar("Cleaning up", 1);
@@ -77,21 +96,18 @@ namespace AudioReferenceEditor
 
         private static void SetupCredentials()
         {
-            if (service == null)
+            GoogleCredential credential;
+            const string secretsPath = AudioReferenceExporterWindow.CLIENT_SECRET_PATH;
+            using (var stream = new FileStream(secretsPath, FileMode.Open, FileAccess.Read))
             {
-                GoogleCredential credential;
-                string secretsPath = AudioReferenceExporterWindow.CLIENT_SECRET_PATH;
-                using (var stream = new FileStream(secretsPath, FileMode.Open, FileAccess.Read))
-                {
-                    credential = GoogleCredential.FromStream(stream).CreateScoped(scopes);
-                }
-
-                service = new SheetsService(new BaseClientService.Initializer
-                {
-                    HttpClientInitializer = credential,
-                    ApplicationName = AudioReferenceExporterWindow.APPLICATION_NAME,
-                });
+                credential = GoogleCredential.FromStream(stream).CreateScoped(scopes);
             }
+
+            service = new SheetsService(new BaseClientService.Initializer
+            {
+                HttpClientInitializer = credential,
+                ApplicationName = AudioReferenceExporterWindow.APPLICATION_NAME,
+            });
         }
 
         private static void UpdateProgressBar(string message, float progress)
@@ -136,7 +152,7 @@ namespace AudioReferenceEditor
             for (int i = 0; i < sheets.Count; i++)
             {
                 var range = $"{sheets[i]}!{STANDARD_RANGE}";
-                var request = service.Spreadsheets.Values.Get(spreadsheetID, range);
+                var request = Service.Spreadsheets.Values.Get(spreadsheetID, range);
 
                 ValueRange response = request.Execute();
                 IList<IList<object>> values = response.Values;
@@ -220,14 +236,13 @@ namespace AudioReferenceEditor
             }
 
             // Add potential new audio refs to AudioRef array by resizing the array 
-            int newSize = audioReferences.Length + newAudioRefsList.Count; // 211 + 1
-            if (audioReferences.Length < newSize)
+            
+            int currentSize = audioReferences.Length;
+            int newSize = currentSize + newAudioRefsList.Count; 
+            if (currentSize < newSize)
             {
-                Array.Resize(ref audioReferences, newSize);
-                for (int i = 0; i < newAudioRefsList.Count; i++)
-                {
-                    audioReferences[audioReferences.Length + i] = newAudioRefsList[i];
-                }
+                newAudioRefsList.AddRange(audioReferences);
+                audioReferences = newAudioRefsList.ToArray();
             }
         }
 
@@ -242,7 +257,7 @@ namespace AudioReferenceEditor
             UpdateProgressBar("Clearing Spreadsheet", 0);
             BatchClearValuesRequest requestBody = new BatchClearValuesRequest { Ranges = ranges };
 
-            SpreadsheetsResource.ValuesResource.BatchClearRequest request = service.Spreadsheets.Values.BatchClear(requestBody, spreadsheetID);
+            SpreadsheetsResource.ValuesResource.BatchClearRequest request = Service.Spreadsheets.Values.BatchClear(requestBody, spreadsheetID);
             BatchClearValuesResponse response = request.Execute();
 
             UpdateProgressBar("Clearing Spreadsheet", 1);
@@ -312,7 +327,7 @@ namespace AudioReferenceEditor
 
             BatchUpdateValuesRequest requestBody = new BatchUpdateValuesRequest { ValueInputOption = "USER_ENTERED", Data = data };
 
-            SpreadsheetsResource.ValuesResource.BatchUpdateRequest request = service.Spreadsheets.Values.BatchUpdate(requestBody, spreadsheetID);
+            SpreadsheetsResource.ValuesResource.BatchUpdateRequest request = Service.Spreadsheets.Values.BatchUpdate(requestBody, spreadsheetID);
             request.Execute();
 
 #if DEBUGGING

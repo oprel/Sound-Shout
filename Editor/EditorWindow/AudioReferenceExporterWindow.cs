@@ -61,9 +61,12 @@ namespace AudioReferenceEditor
             credentialsPathTextField.SetEnabled(false);
             rootContainer.Add(credentialsPathTextField);
 
-            Button updateSpreadsheetBtn = Utilities.CreateButton("Update SpreadSheet", () => { AudioReferenceExporter.UpdateAudioSpreadSheet(LoadSettings()); });
+            Button updateSpreadsheetBtn = Utilities.CreateButton("Update SpreadSheet", () => { AudioReferenceExporter.UpdateAudioSpreadSheet(LoadSettings().spreadSheetURL); });
             rootContainer.Add(updateSpreadsheetBtn);
 
+            Button fetchChangesBtn = Utilities.CreateButton("Fetch SpreadSheet Changes", () => { AudioReferenceExporter.FetchSpreadSheetChanges(LoadSettings().spreadSheetURL); });
+            rootContainer.Add(fetchChangesBtn);
+            
             CreateSelectCredentialsButton(rootContainer);
 
             spreadsheetURLTextField = Utilities.CreateTextField("SpreadSheet URL");
