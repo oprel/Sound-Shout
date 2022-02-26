@@ -3,16 +3,15 @@
 [CreateAssetMenu]
 public class AudioReference : ScriptableObject
 {
-    public string fmodName;
+    public string fullEventPath;
 
-    public void PlaySound() => AudioReferenceHandler.PlayOneShot(this);
-    public void PlaySound3D(Vector3 worldPos) => AudioReferenceHandler.PlayOneShot3D(this, worldPos);
-    
     public override string ToString()
     {
-        return fmodName;
+        return fullEventPath;
     }
-    
+
+    #region Spreadsheet
+
     [Header("Spreadsheet")] 
     public bool is3D;
     public bool looping;
@@ -25,24 +24,22 @@ public class AudioReference : ScriptableObject
     [TextArea] public string feedback;
     
     public Status implementStatus = Status.Todo;
+    public string category;
+    public string eventName;
+
     public enum Status { Delete, Todo, Created, Implemented, Feedback, Iterate, Done };
-    
-    [HideInInspector] public string eventName;
-    [HideInInspector] public string category;
     
     public void UpdateName()
     {
         string assetPath = UnityEditor.AssetDatabase.GetAssetPath(this);
         assetPath = assetPath.Replace("Assets/Audio/", "");
         assetPath = assetPath.Replace(".asset", "");
-        eventName = assetPath;
-        category = assetPath.Split('/')[0];
-
+        
         string finalEventName = "event:/" + assetPath;
 
-        if (fmodName != finalEventName)
+        if (fullEventPath != finalEventName)
         {
-            fmodName = finalEventName;
+            fullEventPath = finalEventName;
 
             UnityEditor.Undo.RecordObject(this, "Updated AudioReference name");
         }
@@ -115,5 +112,7 @@ public class AudioReference : ScriptableObject
     
 #endif
 
+    #endregion
+    
     #endregion
 }
