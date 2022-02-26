@@ -189,7 +189,7 @@ namespace AudioReferenceEditor
                             fullAssetFolderPath = assetPath.Substring(0, lastSlashIndex);
 
                             // Create folder if it doesn't exist
-                            if (!AssetDatabase.IsValidFolder(fullAssetFolderPath + folderToCreate))
+                            if (!AssetDatabase.IsValidFolder($"{fullAssetFolderPath}/{folderToCreate}"))
                             {
                                 Debug.Log($"Creating folder: \"{folderToCreate}\" - fullAssetFolderPath: \"{fullAssetFolderPath}\"");
                                 AssetDatabase.CreateFolder(fullAssetFolderPath, folderToCreate);
@@ -217,7 +217,7 @@ namespace AudioReferenceEditor
                 }
                 else
                 {
-                    Debug.Log($"No data was found in tab: {sheets[i]}!");
+                    Debug.Log($"No data was found in tab: \"{sheets[i]}\"");
                 }
             }
 
