@@ -53,9 +53,19 @@ namespace AudioReferenceEditor
 
         public static void FetchSpreadSheetChanges(string spreadSheetURL)
         {
-            var audioRefs = FindAllAudioReferences(out var tabCategories);
-            tabCategories.Add("Generic");
-            ReadEntries(spreadSheetURL, ref audioRefs, ref tabCategories);
+            try
+            {
+                var audioRefs = FindAllAudioReferences(out var tabCategories);
+                tabCategories.Add("Generic");
+                ReadEntries(spreadSheetURL, ref audioRefs, ref tabCategories);
+                EditorUtility.ClearProgressBar();
+            }
+            catch (Exception e)
+            {
+                EditorUtility.ClearProgressBar();
+                Console.WriteLine(e);
+                throw;
+            }
         }
         
         public static void UpdateAudioSpreadSheet(string spreadSheetURL)
