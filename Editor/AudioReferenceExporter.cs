@@ -61,8 +61,6 @@ namespace AudioReferenceEditor
                 currentOperation++;
                 UpdateProgressBar("Cleaning up", 1);
 
-                RemoveEmptyFolders.RemoveAllEmptyFolders();
-
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
 
