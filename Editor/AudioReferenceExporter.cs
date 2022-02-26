@@ -18,18 +18,7 @@ namespace AudioReferenceEditor
     public static class AudioReferenceExporter
     {
         private static SheetsService service;
-        private static SheetsService Service
-        {
-            get
-            {
-                if (service == null)
-                {
-                    ConfigureGoogleCredentials();
-                }
-
-                return service;
-            }
-        }
+        private static SheetsService Service => service ?? (service = GetSheetsService());
 
         private enum UsedRows { EventName = 0, Is3D = 1, Looping = 2, Parameters = 3, Description = 4, Feedback = 5, ImplementStatus = 6 }
         private static readonly string[] scopes = { SheetsService.Scope.Spreadsheets };
@@ -58,7 +47,7 @@ namespace AudioReferenceEditor
             return sheetTabs;
         }
         
-        private static void ConfigureGoogleCredentials()
+        private static SheetsService GetSheetsService()
         {
             GoogleCredential credential;
             const string secretsPath = AudioReferenceExporterWindow.CLIENT_SECRET_PATH;
@@ -67,7 +56,7 @@ namespace AudioReferenceEditor
                 credential = GoogleCredential.FromStream(stream).CreateScoped(scopes);
             }
 
-            service = new SheetsService(new BaseClientService.Initializer
+            return new SheetsService(new BaseClientService.Initializer
             {
                 HttpClientInitializer = credential,
                 ApplicationName = AudioReferenceExporterWindow.APPLICATION_NAME,
@@ -296,12 +285,12 @@ namespace AudioReferenceEditor
         private static void CreateEntries(string spreadsheetURL, ref AudioReference[] audioReferences)
         {
             Dictionary<string, int> categories = new Dictionary<string, int>();
-
+            
             List<ValueRange> data = new List<ValueRange>();
             for (int i = 0; i < audioReferences.Length; i++)
             {
                 audioReferences[i].UpdateName();
-
+            
                 // If category don't exist, create it
                 if (!categories.ContainsKey(audioReferences[i].category))
                 {
@@ -313,7 +302,7 @@ namespace AudioReferenceEditor
                     // add indention per entry
                     categories[audioReferences[i].category]++;
                 }
-
+            
                 var objectList = new List<object>
                 {
                     audioReferences[i].eventName,
@@ -324,7 +313,7 @@ namespace AudioReferenceEditor
                     audioReferences[i].feedback,
                     audioReferences[i].implementStatus.ToString()
                 };
-
+            
                 var valueRange = new ValueRange
                 {
                     Values = new List<IList<object>> { objectList },
@@ -332,7 +321,7 @@ namespace AudioReferenceEditor
                 };
                 data.Add(valueRange);
             }
-
+            
             // Last Updated Text
             var updateText = new ValueRange
             {
@@ -342,20 +331,11 @@ namespace AudioReferenceEditor
             
             data.Add(updateText);
 
-            var ssRequest = Service.Spreadsheets.Get(spreadsheetURL);
-            Spreadsheet ss = ssRequest.Execute();
 
-            var sheet = new Sheet();
-            sheet.Properties = new SheetProperties();
-            sheet.Properties.Title = "Sheet1";
-            ss.Sheets = new List<Sheet> { sheet };
-
-            var newSheet = Service.Spreadsheets.Create(ss).Execute();
-            Debug.Log($"{JsonConvert.SerializeObject(newSheet)}");
-            return;
+            CreateMissingSheetTabs(spreadsheetURL, categories);
 
             BatchUpdateValuesRequest requestBody = new BatchUpdateValuesRequest { ValueInputOption = "USER_ENTERED", Data = data };
-
+            
             SpreadsheetsResource.ValuesResource.BatchUpdateRequest request = Service.Spreadsheets.Values.BatchUpdate(requestBody, spreadsheetURL);
             request.Execute();
 
@@ -364,6 +344,40 @@ namespace AudioReferenceEditor
 #endif
         }
 
-       
+        private static void CreateMissingSheetTabs(string spreadsheetURL, Dictionary<string, int> categories)
+        {
+            var existingTabs = GetSpreadsheetTabsList(spreadsheetURL);
+            
+            BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest = new BatchUpdateSpreadsheetRequest
+            {
+                Requests = new List<Request>()
+            };
+
+            foreach (var category in categories)
+            {
+                // Don't duplicate existing tabs
+                if (existingTabs.Contains(category.Key))
+                    continue;
+                
+                var addSheetRequest = new AddSheetRequest
+                {
+                    Properties = new SheetProperties
+                    {
+                        Title = category.Key
+                    }
+                };
+
+                batchUpdateSpreadsheetRequest.Requests.Add(new Request
+                {
+                    AddSheet = addSheetRequest
+                });
+            }
+
+            if (batchUpdateSpreadsheetRequest.Requests.Count > 0)
+            {
+                var batchUpdateRequest = Service.Spreadsheets.BatchUpdate(batchUpdateSpreadsheetRequest, spreadsheetURL);
+                batchUpdateRequest.Execute();
+            }
+        }
     }
 }
