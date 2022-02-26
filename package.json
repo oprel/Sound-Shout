@@ -17,5 +17,6 @@
     "audio"
   ],
   "category": "scripting",
-  "type": "tool"
+  "type": "tool",
+  "hideInEditor": false
 }
