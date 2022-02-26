@@ -4,13 +4,14 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
-using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
+using Color = Google.Apis.Sheets.v4.Data.Color;
 using Object = UnityEngine.Object;
 
 namespace AudioReferenceEditor
@@ -84,7 +85,59 @@ namespace AudioReferenceEditor
             var allAudioReferences = GetAllAudioReferences();
             CreateEntries(spreadSheetURL, ref allAudioReferences);
         }
-        
+
+        private static void AddStyleToTopRow(string spreadSheetURL)
+        {
+            //get sheet id by sheet name
+            Spreadsheet spr = Service.Spreadsheets.Get(spreadSheetURL).Execute();
+            Sheet sh = spr.Sheets.FirstOrDefault(s => s.Properties.Title == "Generic");
+            int sheetId = (int)sh.Properties.SheetId;
+
+            //define cell color
+            var userEnteredFormat = new CellFormat
+            {
+                BackgroundColor = new Color
+                {
+                    Blue = 0,
+                    Red = 1,
+                    Green = (float)0.5,
+                    Alpha = (float)0.1
+                },
+                TextFormat = new TextFormat
+                {
+                    Bold = true,
+                    FontSize = 14
+                },
+                HorizontalAlignment = "Center"
+            };
+            BatchUpdateSpreadsheetRequest bussr = new BatchUpdateSpreadsheetRequest();
+
+            //create the update request for cells from the first row
+            var updateCellsRequest = new Request
+            {
+                RepeatCell = new RepeatCellRequest
+                {
+                    Range = new GridRange
+                    {
+                        SheetId = sheetId,
+                        StartColumnIndex = 0,
+                        StartRowIndex = 0,
+                        EndColumnIndex = 28,
+                        EndRowIndex = 1
+                    },
+                    Cell = new CellData
+                    {
+                        UserEnteredFormat = userEnteredFormat
+                    },
+                    Fields = "UserEnteredFormat(BackgroundColor,TextFormat,HorizontalAlignment)"
+                }
+            };
+            bussr.Requests = new List<Request>();
+            bussr.Requests.Add(updateCellsRequest);
+            var bur = Service.Spreadsheets.BatchUpdate(bussr, spreadSheetURL);
+            bur.Execute();
+        }
+
         public static void UpdateAudioSpreadSheet(string spreadSheetURL)
         {
             try
@@ -101,7 +154,7 @@ namespace AudioReferenceEditor
                 ReadEntries(spreadSheetURL, ref audioRefs, ref tabCategories);
 
                 currentOperation++;
-                ClearAllSheetsRequest(spreadSheetURL, ref tabCategories);
+                ClearAllSheetsRequest(spreadSheetURL);
 
                 currentOperation++;
                 CreateEntries(spreadSheetURL, ref audioRefs);
@@ -260,27 +313,6 @@ namespace AudioReferenceEditor
 
             return audioReferencesArray;
         }
-        
-        private static void ClearAllSheetsRequest(string spreadsheetID, ref List<string> sheets)
-        {
-            List<string> ranges = new List<string>();
-            for (int i = 0; i < sheets.Count; i++)
-            {
-                ranges.Add($"{sheets[i]}!{STANDARD_RANGE}");
-            }
-
-            UpdateProgressBar("Clearing Spreadsheet", 0);
-            BatchClearValuesRequest requestBody = new BatchClearValuesRequest { Ranges = ranges };
-
-            SpreadsheetsResource.ValuesResource.BatchClearRequest request = Service.Spreadsheets.Values.BatchClear(requestBody, spreadsheetID);
-            BatchClearValuesResponse response = request.Execute();
-
-            UpdateProgressBar("Clearing Spreadsheet", 1);
-
-#if DEBUGGING
-        Debug.Log($"Cleared Sheets: {JsonConvert.SerializeObject(response)}");
-#endif
-        }
 
         private static void CreateEntries(string spreadsheetURL, ref AudioReference[] audioReferences)
         {
@@ -319,6 +351,7 @@ namespace AudioReferenceEditor
                     Values = new List<IList<object>> { objectList },
                     Range = $"{audioReferences[i].category}!A{categories[audioReferences[i].category]}"
                 };
+                
                 data.Add(valueRange);
             }
             
@@ -344,6 +377,21 @@ namespace AudioReferenceEditor
 #endif
         }
 
+        private static void ClearAllSheetsRequest(string spreadsheetURL)
+        {
+            var sheets = GetSpreadsheetTabsList(spreadsheetURL);
+            List<string> ranges = new List<string>();
+            for (int i = 0; i < sheets.Count; i++)
+            {
+                ranges.Add($"{sheets[i]}!{STANDARD_RANGE}");
+            }
+
+            BatchClearValuesRequest requestBody = new BatchClearValuesRequest { Ranges = ranges };
+
+            SpreadsheetsResource.ValuesResource.BatchClearRequest request = Service.Spreadsheets.Values.BatchClear(requestBody, spreadsheetURL);
+            var response = request.Execute();
+        }
+        
         private static void CreateMissingSheetTabs(string spreadsheetURL, Dictionary<string, int> categories)
         {
             var existingTabs = GetSpreadsheetTabsList(spreadsheetURL);
