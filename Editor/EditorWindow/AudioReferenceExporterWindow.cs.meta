@@ -1,0 +1,13 @@
+fileFormatVersion: 2
+guid: 6b2d7b440425cc04196430c56c9467be
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - m_ViewDataDictionary: {instanceID: 0}
+  - swmLogoTexture2D: {fileID: 2800000, guid: 5d46f518ebede2647bb8a1be6cb5e470, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
