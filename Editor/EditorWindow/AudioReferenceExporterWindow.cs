@@ -13,6 +13,7 @@ namespace AudioReferenceEditor
     {
         private const string ROOT_TOOL_PATH = "Packages/se.somethingwemade.audioreference/Editor/EditorWindow";
         private const string SETTINGS_PATH = ROOT_TOOL_PATH + "/Settings.txt";
+        private const string ICON_TOOL_LOGO = "SoundShout_Logo.png";
 
         private const string MENU_ITEM_CATEGORY = "SWM/AudioReference/";
 
@@ -89,7 +90,7 @@ namespace AudioReferenceEditor
         {
             VisualElement titleContainer = new VisualElement();
             
-            titleContainer.Add(Utilities.CreateImage($"{ROOT_TOOL_PATH}/SWM_Logo.png"));
+            titleContainer.Add(Utilities.CreateImage($"{ROOT_TOOL_PATH}/{ICON_TOOL_LOGO}"));
             
             return titleContainer;
         }
