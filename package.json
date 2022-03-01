@@ -8,7 +8,7 @@
   "displayName": "SWM AudioReference",
   "version": "1.0.0",
   "unity": "2019.4",
-  "description": "Conveniently connect audio events using Scriptable Objects",
+  "description": "Conveniently hook up audio events and generate Google Sheets",
   "keywords": [
     "something",
     "we",

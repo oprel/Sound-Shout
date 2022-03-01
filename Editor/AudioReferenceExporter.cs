@@ -4,317 +4,428 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using UnityEditor;
 using UnityEngine;
+using Color = Google.Apis.Sheets.v4.Data.Color;
+using Object = UnityEngine.Object;
 
-public static class AudioReferenceExporter
+namespace AudioReferenceEditor
 {
-    private enum UsedRows { EventName = 0, Is3D = 1, Looping = 2, Parameters = 3, Description = 4, Feedback = 5, ImplementStatus = 6}
-
-    private static SheetsService service;
-    private static readonly string[] scopes = { SheetsService.Scope.Spreadsheets };
-
-    private const string LAST_UPDATED_RANGE = "~Overview!I1";
-    private const string START_RANGE = "A2";
-    private const string END_RANGE = "G";
-    private const string STANDARD_RANGE = START_RANGE + ":" + END_RANGE;
-
-    // Progress bar things
-    private static int totalOperations, currentOperation;
-    
-    public static void UpdateAudioSpreadSheet(AudioReferenceExporterWindow.ExporterSettings exporterSettings)
+    public static class AudioReferenceExporter
     {
-        try
+        private static SheetsService service;
+        private static SheetsService Service => service ?? (service = GetSheetsService());
+
+        private enum UsedRows { EventName = 0, Is3D = 1, Looping = 2, Parameters = 3, Description = 4, Feedback = 5, ImplementStatus = 6 }
+        private static readonly string[] scopes = { SheetsService.Scope.Spreadsheets };
+        private const string OVERVIEW_TAB = "~Overview";
+        private const string LAST_UPDATED_RANGE = OVERVIEW_TAB + "!H1";
+        private const string START_RANGE = "A2";
+        private const string END_RANGE = "G";
+        private const string STANDARD_RANGE = START_RANGE + ":" + END_RANGE;
+        private static int totalOperations, currentOperation;
+
+        private static List<string> GetSpreadsheetTabsList(string spreadSheetURL)
         {
-            SetupCredentials();
+            var ssRequest = Service.Spreadsheets.Get(spreadSheetURL);
+            Spreadsheet ss = ssRequest.Execute();
+            List<string> sheetTabs = new List<string>();
+            foreach (Sheet sheet in ss.Sheets)
+            {
+                if (sheet.Properties.Title == OVERVIEW_TAB)
+                {
+                    continue;
+                }
 
-            // Progress bar
-            totalOperations = 5; // Number of methods, used to calculate percentage for 
+                sheetTabs.Add(sheet.Properties.Title);
+            }
 
-            currentOperation = 0;
-            var audioRefs = FindAllAudioReferences(out var tabCategories);
-
-            currentOperation++;
-            ReadEntries(exporterSettings.spreadSheetURL, ref audioRefs, ref tabCategories);
-
-            currentOperation++;
-            ClearAllSheetsRequest(exporterSettings.spreadSheetURL, ref tabCategories);
-
-            currentOperation++;
-            CreateEntries(exporterSettings.spreadSheetURL, ref audioRefs);
-
-            currentOperation++;
-            UpdateProgressBar("Cleaning up", 1);
-
-            // My script sometimes creates empty folders for some reason when matching AudioReferences with the spreadsheet so this will delete those folders
-            RemoveEmptyFolders.RemoveAllEmptyFolders();
-
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-
-            EditorUtility.ClearProgressBar();
-            Debug.Log("AudioReferenceExporter: All AudioReference is up-to-date");
+            return sheetTabs;
         }
-        catch (Exception e)
-        {
-            EditorUtility.ClearProgressBar();
-            Console.WriteLine(e);
-            throw;
-        }
-    }
-    
-    [MenuItem("Something We Made/Audio/Open spreadsheet")]
-    public static void OpenGoogleSheetData()
-    {
-        System.Diagnostics.Process.Start("https://docs.google.com/spreadsheets/d/1SXqM6PrQImdtdcTjvSvqgyD2fcSUQ7-_h37p4Ozvf04");
-    }
-
-    private static void SetupCredentials()
-    {
-        if (service == null)
+        
+        private static SheetsService GetSheetsService()
         {
             GoogleCredential credential;
-            string secretsPath = AudioReferenceExporterWindow.CLIENT_SECRET_PATH;
+            const string secretsPath = AudioReferenceExporterWindow.CLIENT_SECRET_PATH;
             using (var stream = new FileStream(secretsPath, FileMode.Open, FileAccess.Read))
             {
                 credential = GoogleCredential.FromStream(stream).CreateScoped(scopes);
             }
 
-            service = new SheetsService(new BaseClientService.Initializer
+            return new SheetsService(new BaseClientService.Initializer
             {
                 HttpClientInitializer = credential,
                 ApplicationName = AudioReferenceExporterWindow.APPLICATION_NAME,
             });
         }
-    }
 
-    private static void UpdateProgressBar(string message, float progress)
-    {
-        EditorUtility.DisplayProgressBar("Updating AudioReferences", message, (progress + currentOperation) / totalOperations);
-    }
-    
-    private static AudioReference[] FindAllAudioReferences(out List<string> tabCategories)
-    {
-        string[] audioReferences = AssetDatabase.FindAssets("t:AudioReference");
-        AudioReference[] audioReferencesArray = new AudioReference[audioReferences.Length]; 
-        tabCategories = new List<string>();
-
-        for (int i = 0; i < audioReferences.Length; i++)
+        public static void FetchSpreadsheetChanges(string spreadSheetURL)
         {
-            var audioReference = AssetDatabase.LoadAssetAtPath<AudioReference>(AssetDatabase.GUIDToAssetPath(audioReferences[i]));
-            audioReferencesArray[i] = audioReference;
-
-            if (string.IsNullOrEmpty(audioReference.fmodName))
+            try
             {
-                Debug.LogError($"AudioReference \"{audioReference.name}\" didn't have it's FMOD setup. Fixing that, make sure its correct.", audioReference);
-                audioReference.UpdateName();
+                var sheetTabs = GetSpreadsheetTabsList(spreadSheetURL);
+                var audioRefs = GetAllAudioReferences();
+                ReadEntries(spreadSheetURL, ref audioRefs, ref sheetTabs);
             }
-            
-            if (!tabCategories.Contains(audioReference.category))
+            catch (Exception e)
             {
-                tabCategories.Add(audioReference.category);
+                EditorUtility.ClearProgressBar();
+                Console.WriteLine(e);
+                throw;
             }
-            
-            UpdateProgressBar("Finding all audio references", (float)i / audioReferences.Length);
         }
 
-        return audioReferencesArray;
-    }
-
-
-    private static void ReadEntries(string spreadsheetID,  ref AudioReference[] audioReferences, ref List<string> sheets)
-    {
-        List<AudioReference> newAudioRefsList = new List<AudioReference>(10);
-        
-        // Loop through all tabs inside the
-        for (int i = 0; i < sheets.Count; i++)
+        public static void UploadLocalChanges(string spreadSheetURL)
         {
-            var range = $"{sheets[i]}!{STANDARD_RANGE}";
-            var request = service.Spreadsheets.Values.Get(spreadsheetID, range);
-    
-            ValueRange response = request.Execute();
-            IList<IList<object>> values = response.Values;
-            if (values != null && values.Count > 0)
+            var allAudioReferences = GetAllAudioReferences();
+            CreateEntries(spreadSheetURL, ref allAudioReferences);
+        }
+
+        private static void AddStyleToTopRow(string spreadSheetURL)
+        {
+            //get sheet id by sheet name
+            Spreadsheet spr = Service.Spreadsheets.Get(spreadSheetURL).Execute();
+            Sheet sh = spr.Sheets.FirstOrDefault(s => s.Properties.Title == "Generic");
+            int sheetId = (int)sh.Properties.SheetId;
+
+            //define cell color
+            var userEnteredFormat = new CellFormat
             {
-                // Go through each row and their data
-                foreach (var row in values)
+                BackgroundColor = new Color
                 {
-                    string eventName = (string)row[(int) UsedRows.EventName];
-                    bool is3D = (string)row[(int) UsedRows.Is3D] == "3D";
-                    bool isLooping = (string)row[(int) UsedRows.Looping] == "Loop";
-                    string parameters = (string)row[(int) UsedRows.Parameters];
-                    string description = (string)row[(int) UsedRows.Description];
-                    string feedback = (string)row[(int) UsedRows.Feedback];
+                    Blue = 0,
+                    Red = 1,
+                    Green = (float)0.5,
+                    Alpha = (float)0.1
+                },
+                TextFormat = new TextFormat
+                {
+                    Bold = true,
+                    FontSize = 14
+                },
+                HorizontalAlignment = "Center"
+            };
+            BatchUpdateSpreadsheetRequest bussr = new BatchUpdateSpreadsheetRequest();
 
-                    AudioReference.Status implementStatus = (AudioReference.Status)Enum.Parse(typeof(AudioReference.Status), (string)row[(int) UsedRows.ImplementStatus]);
-                    
-                    UpdateProgressBar($"Updating AudioReference: {eventName}", (float)i / values.Count);
-                    
-                    bool foundReference = false;
-                    for (int j = 0; j < audioReferences.Length; j++)
+            //create the update request for cells from the first row
+            var updateCellsRequest = new Request
+            {
+                RepeatCell = new RepeatCellRequest
+                {
+                    Range = new GridRange
                     {
-                        if ("event:/" + eventName == audioReferences[j].fmodName)
-                        {
-                            audioReferences[j].ApplyChanges(is3D, isLooping, parameters, description, feedback, implementStatus);
-                            foundReference = true;
-                            break;
-                        }
-                    }
-
-                    // If false means that the AudioReference we're looking for has only been created inside the spreadsheet
-                    // Rumsklang probably created a cool sound and want it implemented.
-                    if (implementStatus == AudioReference.Status.Delete)
+                        SheetId = sheetId,
+                        StartColumnIndex = 0,
+                        StartRowIndex = 0,
+                        EndColumnIndex = 28,
+                        EndRowIndex = 1
+                    },
+                    Cell = new CellData
                     {
-                        Debug.Log($"Skipped creating audio reference for \"{eventName}\" as it's marked as Delete!");
-                    }
-                    else if (!foundReference)
-                    {
-                        // Let's say the one we need to create has a eventName value of "Harbor/CoolNPC/Elias_Talk"
-                        string assetPath = "Assets/Audio/" + eventName + ".asset"; // Assets/Audio/Harbor/CoolNPC/Elias_Talk.asset
+                        UserEnteredFormat = userEnteredFormat
+                    },
+                    Fields = "UserEnteredFormat(BackgroundColor,TextFormat,HorizontalAlignment)"
+                }
+            };
+            bussr.Requests = new List<Request>();
+            bussr.Requests.Add(updateCellsRequest);
+            var bur = Service.Spreadsheets.BatchUpdate(bussr, spreadSheetURL);
+            bur.Execute();
+        }
 
-                        int lastSlashIndex = assetPath.LastIndexOf('/');
-                        string fullAssetFolderPath = assetPath.Substring(0, lastSlashIndex); // Assets/Audio/Harbor/CoolNPC
+        public static void UpdateAudioSpreadSheet(string spreadSheetURL)
+        {
+            try
+            {
+                // Progress bar
+                totalOperations = 5; // Number of methods, used to calculate percentage for 
 
-                        // Get the folder where we should put the file
-                        lastSlashIndex = fullAssetFolderPath.LastIndexOf('/');
-                        string folderToCreate = fullAssetFolderPath.Substring(lastSlashIndex + 1); // Only the folder part "CoolNPC"
-                        fullAssetFolderPath = assetPath.Substring(0, lastSlashIndex);
+                currentOperation = 0;
+                var audioRefs = GetAllAudioReferences();
 
-                        // Create folder if it doesn't exist
-                        if (!AssetDatabase.IsValidFolder(fullAssetFolderPath + folderToCreate))
-                        {
-                            Debug.Log($"Creating folder: \"{folderToCreate}\" - fullAssetFolderPath: \"{fullAssetFolderPath}\"");
-                            AssetDatabase.CreateFolder(fullAssetFolderPath, folderToCreate);
-                        }
+                var tabCategories = GetAudioReferenceCategories(audioRefs);
 
-                        // // Create a new AudioReference and place it in it's correct folder
-                        AudioReference newAudioReference = ScriptableObject.CreateInstance<AudioReference>();
-                        Undo.RecordObject(newAudioReference, "Created new AudioReference");
+                currentOperation++;
+                ReadEntries(spreadSheetURL, ref audioRefs, ref tabCategories);
 
-                        // Setup all variables 
-                        newAudioReference.SetupVariables(is3D, isLooping, parameters, description, feedback, implementStatus);
-                        AssetDatabase.CreateAsset(newAudioReference, assetPath);
+                currentOperation++;
+                ClearAllSheetsRequest(spreadSheetURL);
 
-                        newAudioReference.UpdateName(); // Make sure the asset has correct FmodName set to it
+                currentOperation++;
+                CreateEntries(spreadSheetURL, ref audioRefs);
 
-                        newAudioRefsList.Add(newAudioReference);
+                currentOperation++;
+                UpdateProgressBar("Cleaning up", 1);
 
-                        Debug.Log($"<color=cyan>AudioReferenceExporter: Created new AudioReference from spreadsheet: {eventName}</color>");
-                    }
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
 
-#if DEBUGGING
-                    Debug.Log($"Name: \"{eventName}\" " + $"3D: {is3D} - " + $"Loop: {isLooping} - " + $"Description: {description}" + $"Status: {implementStatus.ToString()}");
-#endif
+                EditorUtility.ClearProgressBar();
+                Debug.Log("AudioReferenceExporter: All AudioReference is up-to-date");
+            }
+            catch (Exception e)
+            {
+                EditorUtility.ClearProgressBar();
+                Console.WriteLine(e);
+                throw;
+            }
+        }
+
+        private static void UpdateProgressBar(string message, float progress)
+        {
+            EditorUtility.DisplayProgressBar("Updating AudioReferences", message, (progress + currentOperation) / totalOperations);
+        }
+
+        private static List<string> GetAudioReferenceCategories(IReadOnlyList<AudioReference> audioReferences)
+        {
+            var tabCategories = new List<string>();
+            for (int i = 0; i < audioReferences.Count; i++)
+            {
+                var audioReference = audioReferences[i];
+                if (!tabCategories.Contains(audioReference.category))
+                {
+                    tabCategories.Add(audioReference.category);
                 }
             }
-            else
-            {
-                Debug.Log($"No data was found in tab: {sheets[i]}!");
-            }
+
+            return tabCategories;
         }
 
-        // Add potential new audio refs to AudioRef array by resizing the array 
-        int newSize = audioReferences.Length + newAudioRefsList.Count; // 211 + 1
-        if (audioReferences.Length < newSize)
+        private static void ReadEntries(string spreadsheetURL, ref AudioReference[] audioReferences, ref List<string> sheets)
         {
-            Array.Resize(ref audioReferences, newSize);
-            for (int i = 0; i < newAudioRefsList.Count; i++)
+            List<AudioReference> newAudioRefsList = new List<AudioReference>(10);
+            for (int sheetIndex = 0; sheetIndex < sheets.Count; sheetIndex++)
             {
-                audioReferences[audioReferences.Length + i] = newAudioRefsList[i];
-            }
-        }
-    }
+                var range = $"{sheets[sheetIndex]}!{STANDARD_RANGE}";
+                var request = Service.Spreadsheets.Values.Get(spreadsheetURL, range);
 
-    private static void ClearAllSheetsRequest(string spreadsheetID, ref List<string> sheets)
-    {
-        List<string> ranges = new List<string>();
-        for (int i = 0; i < sheets.Count; i++)
-        {
-            ranges.Add($"{sheets[i]}!{STANDARD_RANGE}");
-        }
-        
-        UpdateProgressBar("Clearing Spreadsheet", 0);
-        BatchClearValuesRequest requestBody = new BatchClearValuesRequest {Ranges = ranges};
+                ValueRange response = request.Execute();
+                IList<IList<object>> values = response.Values;
+                if (values != null && values.Count > 0)
+                {
+                    // Go through each row and their data
+                    foreach (var row in values)
+                    {
+                        string eventName = $"{sheets[sheetIndex]}/{(string)row[(int)UsedRows.EventName]}";
+                        bool is3D = (string)row[(int)UsedRows.Is3D] == "3D";
+                        bool isLooping = (string)row[(int)UsedRows.Looping] == "Loop";
+                        string parameters = (string)row[(int)UsedRows.Parameters];
+                        string description = (string)row[(int)UsedRows.Description];
+                        string feedback = (string)row[(int)UsedRows.Feedback];
 
-        SpreadsheetsResource.ValuesResource.BatchClearRequest request = service.Spreadsheets.Values.BatchClear(requestBody, spreadsheetID);
-        BatchClearValuesResponse response = request.Execute();
-        
-        UpdateProgressBar("Clearing Spreadsheet", 1);
+                        AudioReference.Status implementStatus = (AudioReference.Status)Enum.Parse(typeof(AudioReference.Status), (string)row[(int)UsedRows.ImplementStatus]);
 
+                        bool newAudioReference = true;
+                        string fullEventName = $"event:/{eventName}";
+                        for (int i = 0; i < audioReferences.Length; i++)
+                        {
+                            if (audioReferences[i].fullEventPath == fullEventName)
+                            {
+                                audioReferences[i].ApplyChanges(is3D, isLooping, parameters, description, feedback, implementStatus);
+                                newAudioReference = false;
+                                break;
+                            }
+                        }
+
+                        if (implementStatus == AudioReference.Status.Delete)
+                        {
+                            Debug.Log($"Skipped creating audio reference for \"{eventName}\" as it's marked as Delete!");
+                        }
+                        else if (newAudioReference)
+                        {
+                            var newSound = CreateNewAudioReferenceAsset(eventName, is3D, isLooping, parameters, description, feedback, implementStatus);
+                            newAudioRefsList.Add(newSound);
+                        }
 #if DEBUGGING
-        Debug.Log($"Cleared Sheets: {JsonConvert.SerializeObject(response)}");
+                        Debug.Log($"Name: \"{eventName}\" " + $"3D: {is3D} - " + $"Loop: {isLooping} - " + $"Description: {description}" + $"Status: {implementStatus.ToString()}");
 #endif
-    }
-
-    private static void CreateEntries(string spreadsheetID, ref AudioReference[] audioReferences)
-    {
-        // Check if fmod event exists
-        //RuntimeManager.StudioSystem.getEvent(id, out desc);
-
-        Dictionary<string, int> categories = new Dictionary<string, int>();
-        
-        // Go though all audio refs and add them as their own value range
-        // It's like a class with values.
-        // Doing this adds all values in one go instead of doing multiple individual requests
-        List<ValueRange> data = new List<ValueRange>();
-        for (int i = 0; i < audioReferences.Length; i++)
-        {
-            UpdateProgressBar($"Uploading AudioReference: {audioReferences[i]}", (float)i / audioReferences.Length);
-
-            // Update the audio reference's info
-            // To make sure it's correct before uploading
-            audioReferences[i].UpdateName();
-            
-            // If category don't exist, create it
-            if (!categories.ContainsKey(audioReferences[i].category))
-            {
-                // indention starts at index 2 in the spreadsheet
-                categories.Add(audioReferences[i].category, 2);
+                    }
+                }
+                else
+                {
+                    Debug.Log($"No data was found in tab: \"{sheets[sheetIndex]}\"");
+                }
             }
-            else
-            {
-                // add indention per entry
-                categories[audioReferences[i].category]++;
-            }
-            
-            var objectList = new List<object>
-            {
-                audioReferences[i].eventName,
-                audioReferences[i].is3D ? "3D" : "2D",
-                audioReferences[i].looping ? "Loop" : "OneShot",
-                audioReferences[i].parameters,
-                audioReferences[i].description,
-                audioReferences[i].feedback,
-                audioReferences[i].implementStatus.ToString()
-            };
 
-            var valueRange = new ValueRange
+            int currentSize = audioReferences.Length;
+            int newSize = currentSize + newAudioRefsList.Count;
+            if (currentSize < newSize)
             {
-                Values = new List<IList<object>> {objectList},
-                Range = $"{audioReferences[i].category}!A" + categories[audioReferences[i].category],
-            };
-            data.Add(valueRange);
+                newAudioRefsList.AddRange(audioReferences);
+                audioReferences = newAudioRefsList.ToArray();
+            }
         }
-        
-        // Add "Updated" text to spreadsheet
-        var updateText = new ValueRange
-        {
-            Values = new List<IList<object>> {new object[] {"Updated\n" + DateTime.Now.ToString("g", CultureInfo.InvariantCulture)}}, 
-            Range = LAST_UPDATED_RANGE
-        };
-        data.Add(updateText);
-        
-        BatchUpdateValuesRequest requestBody = new BatchUpdateValuesRequest {ValueInputOption = "USER_ENTERED", Data = data};
 
-        SpreadsheetsResource.ValuesResource.BatchUpdateRequest request = service.Spreadsheets.Values.BatchUpdate(requestBody, spreadsheetID);
-        request.Execute();
+        private static AudioReference CreateNewAudioReferenceAsset(string eventName, bool is3D, bool isLooping, string parameters, string description, string feedback, AudioReference.Status implementStatus)
+        {
+            AudioReference newAudioReference = ScriptableObject.CreateInstance<AudioReference>();
+            Undo.RecordObject(newAudioReference, "Created new AudioReference");
+
+            // Example eventName: "UI/Menus/Album_Open"
+            string assetPath = $"Assets/Audio/{eventName}.asset";
+
+            // Split assetPath so we get parent folder
+            // Example Assets/Audio/UI/Menus <--
+            int lastSlashIndex = assetPath.LastIndexOf('/');
+            string unityAssetFolderPath = assetPath.Substring(0, lastSlashIndex);
+
+            try
+            {
+                if (!AssetDatabase.IsValidFolder(unityAssetFolderPath))
+                {
+                    string unityProjectPath = Application.dataPath.Replace("Assets", "");
+                    string absoluteAssetParentFolderPath = $"{unityProjectPath}{unityAssetFolderPath}";
+                    Directory.CreateDirectory(absoluteAssetParentFolderPath);
+                    AssetDatabase.Refresh();
+                }
+
+                AssetDatabase.CreateAsset(newAudioReference, assetPath);
+                newAudioReference.SetupVariables(is3D, isLooping, parameters, description, feedback, implementStatus);
+                newAudioReference.UpdateName();
+
+                Debug.Log($"<color=cyan>Created new AudioReference: \"{eventName}\"</color>");
+                return newAudioReference;
+            }
+            catch (Exception e)
+            {
+                AssetDatabase.DeleteAsset(assetPath);
+                Object.DestroyImmediate(newAudioReference);
+                throw new Exception($"Error creating new AudioReference Asset. ERROR: {e.Message}");
+            }
+        }
+
+        private static AudioReference[] GetAllAudioReferences()
+        {
+            string[] audioReferences = AssetDatabase.FindAssets("t:AudioReference");
+            AudioReference[] audioReferencesArray = new AudioReference[audioReferences.Length];
+
+            for (int i = 0; i < audioReferences.Length; i++)
+            {
+                var audioReference = AssetDatabase.LoadAssetAtPath<AudioReference>(AssetDatabase.GUIDToAssetPath(audioReferences[i]));
+                audioReferencesArray[i] = audioReference;
+                audioReference.SetupVariablesIfNeeded();
+            }
+
+            return audioReferencesArray;
+        }
+
+        private static void CreateEntries(string spreadsheetURL, ref AudioReference[] audioReferences)
+        {
+            Dictionary<string, int> categories = new Dictionary<string, int>();
+            
+            List<ValueRange> data = new List<ValueRange>();
+            for (int i = 0; i < audioReferences.Length; i++)
+            {
+                audioReferences[i].UpdateName();
+            
+                // If category don't exist, create it
+                if (!categories.ContainsKey(audioReferences[i].category))
+                {
+                    // indention starts at index 2 in the spreadsheet
+                    categories.Add(audioReferences[i].category, 2);
+                }
+                else
+                {
+                    // add indention per entry
+                    categories[audioReferences[i].category]++;
+                }
+            
+                var objectList = new List<object>
+                {
+                    audioReferences[i].eventName,
+                    audioReferences[i].is3D ? "3D" : "2D",
+                    audioReferences[i].looping ? "Loop" : "OneShot",
+                    audioReferences[i].parameters,
+                    audioReferences[i].description,
+                    audioReferences[i].feedback,
+                    audioReferences[i].implementStatus.ToString()
+                };
+            
+                var valueRange = new ValueRange
+                {
+                    Values = new List<IList<object>> { objectList },
+                    Range = $"{audioReferences[i].category}!A{categories[audioReferences[i].category]}"
+                };
+                
+                data.Add(valueRange);
+            }
+            
+            // Last Updated Text
+            var updateText = new ValueRange
+            {
+                Values = new List<IList<object>> { new object[] { "Updated\n" + DateTime.Now.ToString("g", CultureInfo.InvariantCulture) } },
+                Range = LAST_UPDATED_RANGE
+            };
+            
+            data.Add(updateText);
+
+
+            CreateMissingSheetTabs(spreadsheetURL, categories);
+
+            BatchUpdateValuesRequest requestBody = new BatchUpdateValuesRequest { ValueInputOption = "USER_ENTERED", Data = data };
+            
+            SpreadsheetsResource.ValuesResource.BatchUpdateRequest request = Service.Spreadsheets.Values.BatchUpdate(requestBody, spreadsheetURL);
+            request.Execute();
 
 #if DEBUGGING
         Debug.Log($"Added {audioReferences.Length} audio refs: {JsonConvert.SerializeObject(requestBody)}");
 #endif
+        }
+
+        private static void ClearAllSheetsRequest(string spreadsheetURL)
+        {
+            var sheets = GetSpreadsheetTabsList(spreadsheetURL);
+            List<string> ranges = new List<string>();
+            for (int i = 0; i < sheets.Count; i++)
+            {
+                ranges.Add($"{sheets[i]}!{STANDARD_RANGE}");
+            }
+
+            BatchClearValuesRequest requestBody = new BatchClearValuesRequest { Ranges = ranges };
+
+            SpreadsheetsResource.ValuesResource.BatchClearRequest request = Service.Spreadsheets.Values.BatchClear(requestBody, spreadsheetURL);
+            var response = request.Execute();
+        }
+        
+        private static void CreateMissingSheetTabs(string spreadsheetURL, Dictionary<string, int> categories)
+        {
+            var existingTabs = GetSpreadsheetTabsList(spreadsheetURL);
+            
+            BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest = new BatchUpdateSpreadsheetRequest
+            {
+                Requests = new List<Request>()
+            };
+
+            foreach (var category in categories)
+            {
+                // Don't duplicate existing tabs
+                if (existingTabs.Contains(category.Key))
+                    continue;
+                
+                var addSheetRequest = new AddSheetRequest
+                {
+                    Properties = new SheetProperties
+                    {
+                        Title = category.Key
+                    }
+                };
+
+                batchUpdateSpreadsheetRequest.Requests.Add(new Request
+                {
+                    AddSheet = addSheetRequest
+                });
+            }
+
+            if (batchUpdateSpreadsheetRequest.Requests.Count > 0)
+            {
+                var batchUpdateRequest = Service.Spreadsheets.BatchUpdate(batchUpdateSpreadsheetRequest, spreadsheetURL);
+                batchUpdateRequest.Execute();
+            }
+        }
     }
 }
