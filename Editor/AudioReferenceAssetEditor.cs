@@ -1,17 +1,20 @@
-using UnityEditor;
-using UnityEngine;
-
-[CustomEditor(typeof(AudioReference))]
-public class AudioReferenceAssetEditor : Editor
+namespace SoundShout.Editor
 {
-    public override void OnInspectorGUI()
+    using UnityEditor;
+    using UnityEngine;
+    
+    [CustomEditor(typeof(AudioReference))] 
+    public class AudioReferenceAssetEditor : Editor
     {
-        DrawDefaultInspector();
-        
-        AudioReference myScript = (AudioReference)target;
-        if(GUILayout.Button("Update FMOD Name"))
+        public override void OnInspectorGUI()
         {
-            myScript.UpdateName();
+            DrawDefaultInspector();
+
+            AudioReference myScript = (AudioReference)target;
+            if (GUILayout.Button("Update FMOD Name"))
+            {
+                myScript.UpdateName();
+            }
         }
     }
 }

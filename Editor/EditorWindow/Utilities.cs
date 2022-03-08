@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace AudioReferenceEditor
+namespace SoundShout.Editor
 {
     public static class Utilities
     {
@@ -12,7 +12,6 @@ namespace AudioReferenceEditor
             return new Image
             {
                 image = AssetDatabase.LoadAssetAtPath<Texture>(imagePath),
-                scaleMode = ScaleMode.ScaleToFit
             };
         }
         
@@ -27,6 +26,11 @@ namespace AudioReferenceEditor
             return label;
         }
         
+        internal static Toggle CreateToggle(string label)
+        {
+            return new Toggle(label);
+        }
+
         internal static TextField CreateTextField(string label)
         {
             var field = new TextField
