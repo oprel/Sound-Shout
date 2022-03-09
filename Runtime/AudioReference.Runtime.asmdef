@@ -1,9 +1,6 @@
 {
     "name": "AudioReference.Runtime",
-    "rootNamespace": "",
-    "references": [
-        "FMODUnity"
-    ],
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
