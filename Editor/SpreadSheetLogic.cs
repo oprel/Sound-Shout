@@ -30,10 +30,13 @@ namespace SoundShout.Editor
         private const string STANDARD_RANGE = START_RANGE + ":" + END_RANGE;
         private static int totalOperations, currentOperation;
 
-        private static List<string> GetSpreadsheetTabsList(string spreadSheetURL)
+        private static Spreadsheet GetSheetData(string spreadSheetUrl)
         {
-            var ssRequest = Service.Spreadsheets.Get(spreadSheetURL);
-            Spreadsheet ss = ssRequest.Execute();
+            return Service.Spreadsheets.Get(spreadSheetUrl).Execute();
+        }
+
+        private static List<string> GetSpreadsheetTabsList(Spreadsheet ss)
+        {
             List<string> sheetTabs = new List<string>();
             foreach (Sheet sheet in ss.Sheets)
             {
@@ -68,7 +71,8 @@ namespace SoundShout.Editor
         {
             try
             {
-                var sheetTabs = GetSpreadsheetTabsList(spreadSheetURL);
+                var data = GetSheetData(spreadSheetURL);
+                var sheetTabs = GetSpreadsheetTabsList(data);
                 var audioRefs = GetAllAudioReferences();
                 ReadEntries(spreadSheetURL, ref audioRefs, ref sheetTabs);
             }
@@ -84,58 +88,6 @@ namespace SoundShout.Editor
         {
             var allAudioReferences = GetAllAudioReferences();
             CreateEntries(spreadSheetURL, ref allAudioReferences);
-        }
-
-        private static void AddStyleToTopRow(string spreadSheetURL)
-        {
-            //get sheet id by sheet name
-            Spreadsheet spr = Service.Spreadsheets.Get(spreadSheetURL).Execute();
-            Sheet sh = spr.Sheets.FirstOrDefault(s => s.Properties.Title == "Generic");
-            int sheetId = (int)sh.Properties.SheetId;
-
-            //define cell color
-            var userEnteredFormat = new CellFormat
-            {
-                BackgroundColor = new Color
-                {
-                    Blue = 0,
-                    Red = 1,
-                    Green = (float)0.5,
-                    Alpha = (float)0.1
-                },
-                TextFormat = new TextFormat
-                {
-                    Bold = true,
-                    FontSize = 14
-                },
-                HorizontalAlignment = "Center"
-            };
-            BatchUpdateSpreadsheetRequest bussr = new BatchUpdateSpreadsheetRequest();
-
-            //create the update request for cells from the first row
-            var updateCellsRequest = new Request
-            {
-                RepeatCell = new RepeatCellRequest
-                {
-                    Range = new GridRange
-                    {
-                        SheetId = sheetId,
-                        StartColumnIndex = 0,
-                        StartRowIndex = 0,
-                        EndColumnIndex = 28,
-                        EndRowIndex = 1
-                    },
-                    Cell = new CellData
-                    {
-                        UserEnteredFormat = userEnteredFormat
-                    },
-                    Fields = "UserEnteredFormat(BackgroundColor,TextFormat,HorizontalAlignment)"
-                }
-            };
-            bussr.Requests = new List<Request>();
-            bussr.Requests.Add(updateCellsRequest);
-            var bur = Service.Spreadsheets.BatchUpdate(bussr, spreadSheetURL);
-            bur.Execute();
         }
 
         public static void UpdateAudioSpreadSheet(string spreadSheetURL)
@@ -199,7 +151,7 @@ namespace SoundShout.Editor
         private static void ReadEntries(string spreadsheetURL, ref AudioReference[] audioReferences, ref List<string> sheets)
         {
             List<AudioReference> newAudioRefsList = new List<AudioReference>(10);
-            for (int sheetIndex = 0; sheetIndex < sheets.Count; sheetIndex++)
+            for (int sheetIndex = 1; sheetIndex < sheets.Count; sheetIndex++)
             {
                 var range = $"{sheets[sheetIndex]}!{STANDARD_RANGE}";
                 var request = Service.Spreadsheets.Values.Get(spreadsheetURL, range);
@@ -377,9 +329,10 @@ namespace SoundShout.Editor
 #endif
         }
 
-        private static void ClearAllSheetsRequest(string spreadsheetURL)
+        private static void ClearAllSheetsRequest(string spreadsheetUrl)
         {
-            var sheets = GetSpreadsheetTabsList(spreadsheetURL);
+            var data = GetSheetData(spreadsheetUrl);
+            var sheets = GetSpreadsheetTabsList(data);
             List<string> ranges = new List<string>();
             for (int i = 0; i < sheets.Count; i++)
             {
@@ -388,30 +341,32 @@ namespace SoundShout.Editor
 
             BatchClearValuesRequest requestBody = new BatchClearValuesRequest { Ranges = ranges };
 
-            SpreadsheetsResource.ValuesResource.BatchClearRequest request = Service.Spreadsheets.Values.BatchClear(requestBody, spreadsheetURL);
+            SpreadsheetsResource.ValuesResource.BatchClearRequest request = Service.Spreadsheets.Values.BatchClear(requestBody, spreadsheetUrl);
             var response = request.Execute();
         }
-        
+
         private static void CreateMissingSheetTabs(string spreadsheetURL, Dictionary<string, int> categories)
         {
-            var existingTabs = GetSpreadsheetTabsList(spreadsheetURL);
-            
+            var data = GetSheetData(spreadsheetURL);
+            var existingTabs = GetSpreadsheetTabsList(data);
+
             BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest = new BatchUpdateSpreadsheetRequest
             {
                 Requests = new List<Request>()
             };
 
+            bool addedNewTabs = false;
             foreach (var category in categories)
             {
                 // Don't duplicate existing tabs
                 if (existingTabs.Contains(category.Key))
                     continue;
-                
+
                 var addSheetRequest = new AddSheetRequest
                 {
                     Properties = new SheetProperties
                     {
-                        Title = category.Key
+                        Title = category.Key,
                     }
                 };
 
@@ -423,9 +378,200 @@ namespace SoundShout.Editor
 
             if (batchUpdateSpreadsheetRequest.Requests.Count > 0)
             {
-                var batchUpdateRequest = Service.Spreadsheets.BatchUpdate(batchUpdateSpreadsheetRequest, spreadsheetURL);
+                var batchUpdateRequest =
+                    Service.Spreadsheets.BatchUpdate(batchUpdateSpreadsheetRequest, spreadsheetURL);
+                batchUpdateRequest.Execute();
+                addedNewTabs = true;
+            }
+
+            ApplyFormattingToTopRows(spreadsheetURL);
+            if (addedNewTabs)
+            {
+            }
+        }
+
+        public static void ApplyFormattingToTopRows(string spreadsheetURL)
+        {
+            var batchUpdateSpreadsheetRequest = new BatchUpdateSpreadsheetRequest
+            {
+                Requests = new List<Request>()
+            };
+
+            var data = GetSheetData(spreadsheetURL);
+            foreach (var sheet in data.Sheets)
+            {
+                string tabTitle = sheet.Properties.Title;
+                if (tabTitle == "~Overview")
+                    continue;
+                
+                int sheetID = (int)sheet.Properties.SheetId;
+                    
+                #region Header Format
+
+                // Freeze top row
+                batchUpdateSpreadsheetRequest.Requests.Add(new Request
+                {
+                    UpdateSheetProperties = new UpdateSheetPropertiesRequest
+                    {
+                        Properties = new SheetProperties
+                        {
+                            SheetId = sheetID,
+                            GridProperties = new GridProperties
+                            {
+                                FrozenRowCount = 1
+                            }
+                        },
+                        Fields = "gridProperties.frozenRowCount"
+                    }
+                });
+
+
+                var userEnteredFormat = new CellFormat
+                {
+                    BackgroundColor = new Color
+                    {
+                        Blue = 1,
+                        Red = 0,
+                        Green = 1,
+                        Alpha = 0
+                    },
+                    TextFormat = new TextFormat
+                    {
+                        Bold = true,
+                        FontSize = 14
+                    },
+                    HorizontalAlignment = "Center"
+                };
+
+                //create the update request for cells from the first row
+                var repeatCell = new RepeatCellRequest
+                {
+                    Range = GetHeaderGridRange(sheetID),
+                    Cell = new CellData
+                    {
+                        UserEnteredFormat = userEnteredFormat
+                    },
+                    Fields = "UserEnteredFormat(BackgroundColor,TextFormat,HorizontalAlignment)"
+                };
+
+                batchUpdateSpreadsheetRequest.Requests.Add(new Request
+                {
+                    RepeatCell = repeatCell
+                });
+
+                #endregion
+
+                #region "Status" Validation Column
+
+                // var statusValidation = new SetDataValidationRequest
+                // {
+                //     Range = new GridRange
+                //     {
+                //         StartRowIndex = 1,
+                //         StartColumnIndex = 6,
+                //         EndColumnIndex = 7
+                //     },
+                //     Rule = new DataValidationRule
+                //     {
+                //         Condition = new BooleanCondition
+                //         {
+                //             Type = "ONE_OF_LIST",
+                //             Values = new List<ConditionValue>()
+                //         },
+                //         Strict = true,
+                //         ShowCustomUi = true,
+                //     }
+                // };
+                //
+                // // Dynamically fill the condition with values
+                // foreach (var enumValue in GetStatusEnumValues())
+                // {
+                //     statusValidation.Rule.Condition.Values.Add(new ConditionValue {UserEnteredValue = enumValue});
+                // }
+                //
+                // batchUpdateSpreadsheetRequest.Requests.Add(new Request
+                // {
+                //     SetDataValidation = statusValidation
+                // });
+
+                #endregion
+            }
+
+            if (batchUpdateSpreadsheetRequest.Requests.Count > 0)
+            {
+                var batchUpdateRequest = Service.Spreadsheets.BatchUpdate(batchUpdateSpreadsheetRequest, spreadsheetURL); 
                 batchUpdateRequest.Execute();
             }
         }
+
+        private static string[] GetStatusEnumValues()
+        {
+            return Enum.GetNames(typeof(AudioReference.Status));
+        }
+
+        private static GridRange GetHeaderGridRange(int sheetId)
+        {
+            return new GridRange
+            {
+                SheetId = sheetId,
+                EndRowIndex = 1,
+                //StartRowIndex = 0,
+                //StartColumnIndex = 0, // Leaving these out will make the whole row bolded!
+                //EndColumnIndex = 6,
+            };
+        }
+        
+        public static void AddStyleToTopRow(string spreadSheetURL)
+        {
+            //get sheet id by sheet name
+            Spreadsheet spr = GetSheetData(spreadSheetURL);
+            Sheet sh = spr.Sheets.FirstOrDefault(s => s.Properties.Title == "Generic");
+            int sheetId = (int)sh.Properties.SheetId;
+
+            //define cell color
+            var userEnteredFormat = new CellFormat
+            {
+                BackgroundColor = new Color
+                {
+                    Blue = 0,
+                    Red = 1,
+                    Green = (float)0.5,
+                    Alpha = (float)0.1
+                },
+                TextFormat = new TextFormat
+                {
+                    Bold = true,
+                    FontSize = 14
+                },
+                HorizontalAlignment = "Center"
+            };
+            BatchUpdateSpreadsheetRequest bussr = new BatchUpdateSpreadsheetRequest();
+
+            //create the update request for cells from the first row
+            var updateCellsRequest = new Request
+            {
+                RepeatCell = new RepeatCellRequest
+                {
+                    Range = new GridRange
+                    {
+                        SheetId = sheetId,
+                        StartColumnIndex = 0,
+                        StartRowIndex = 0,
+                        EndColumnIndex = 28,
+                        EndRowIndex = 1
+                    },
+                    Cell = new CellData
+                    {
+                        UserEnteredFormat = userEnteredFormat
+                    },
+                    Fields = "UserEnteredFormat(BackgroundColor,TextFormat,HorizontalAlignment)"
+                }
+            };
+            bussr.Requests = new List<Request>();
+            bussr.Requests.Add(updateCellsRequest);
+            var bur = Service.Spreadsheets.BatchUpdate(bussr, spreadSheetURL);
+            bur.Execute();
+        }
+
     }
 }
