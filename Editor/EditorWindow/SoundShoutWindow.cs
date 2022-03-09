@@ -78,25 +78,20 @@ namespace SoundShout.Editor
         {
             Foldout setupFoldout = new Foldout
             {
-                text = "Initial Setup",
+                text = IsClientSecretsFileAvailable() ? "Initial Setup ✓" : "Initial Setup",
                 style = { backgroundColor = new StyleColor(Color.black)}
             };
-            
-            spreadsheetURLTextField = Utilities.CreateTextField("Spreadsheet URL");
-            setupFoldout.Add(spreadsheetURLTextField);
-            
-            if (IsClientSecretsFileAvailable() && !string.IsNullOrEmpty(spreadsheetURLTextField.value))
-            {
-                setupFoldout.text += " ✓";
-            }
+
+            var viewSetupVideoButton = Utilities.CreateButton("Setup Video", () => Process.Start("https://www.youtube.com/watch?v=afTiNU6EoA8"));
+            setupFoldout.Add(viewSetupVideoButton);
 
             var openGoogleConsoleButton = Utilities.CreateButton("Open Google Console", () => Process.Start("https://console.developers.google.com"));
             setupFoldout.Add(openGoogleConsoleButton);
 
-            var viewSetupVideoButton = Utilities.CreateButton("Setup Video", () => Process.Start("https://www.youtube.com/watch?v=afTiNU6EoA8"));
-            setupFoldout.Add(viewSetupVideoButton);
-            
-            setupFoldout.Add(CreateSelectCredentialsButton());
+            setupFoldout.Add(CreateLocateClientSecretButton());
+
+            spreadsheetURLTextField = Utilities.CreateTextField("Spreadsheet URL");
+            setupFoldout.Add(spreadsheetURLTextField);
 
             setupFoldout.Add(Utilities.CreateButton("Save Settings", SaveSettings));
 
@@ -119,7 +114,7 @@ namespace SoundShout.Editor
                 setupFoldout.Add(Utilities.CreateButton("Open Spreadsheet", OpenGoogleSheetData));
                 setupFoldout.Add(Utilities.CreateButton("Update Spreadsheet", () => { SpreadSheetLogic.UpdateAudioSpreadSheet(LoadSettings().spreadSheetURL); }));
                 setupFoldout.Add(Utilities.CreateButton("Fetch Spreadsheet Changes", () => { SpreadSheetLogic.FetchSpreadsheetChanges(LoadSettings().spreadSheetURL); }));
-                setupFoldout.Add(Utilities.CreateButton("Upload Local Changes", () => { SpreadSheetLogic.UploadLocalChanges(LoadSettings().spreadSheetURL); }));
+                // setupFoldout.Add(Utilities.CreateButton("Upload Local Changes", () => { SpreadSheetLogic.UploadLocalChanges(LoadSettings().spreadSheetURL); }));
             }
             
             return setupFoldout;
@@ -169,7 +164,7 @@ namespace SoundShout.Editor
             Debug.Log("Saved settings");
         }
 
-        private static VisualElement CreateSelectCredentialsButton()
+        private static VisualElement CreateLocateClientSecretButton()
         {
             var browseButton = Utilities.CreateButton("Locate \"client_secrets.json\"", () =>
             {
