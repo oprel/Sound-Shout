@@ -86,7 +86,7 @@ namespace SoundShout.Editor
         public static void UploadLocalChanges(string spreadSheetURL)
         {
             var allAudioReferences = GetAllAudioReferences();
-            CreateEntries(spreadSheetURL, ref allAudioReferences);
+            UploadLocalAudioReferenceChanges(spreadSheetURL, ref allAudioReferences);
         }
 
         public static void UpdateAudioSpreadSheet(string spreadSheetURL)
@@ -99,16 +99,14 @@ namespace SoundShout.Editor
                 currentOperation = 0;
                 var audioRefs = GetAllAudioReferences();
 
-                var tabCategories = GetAudioReferenceCategories(audioRefs);
-
                 currentOperation++;
-                ReadEntries(spreadSheetURL, ref audioRefs, ref tabCategories);
+                FetchSpreadsheetChanges(spreadSheetURL);
 
                 currentOperation++;
                 ClearAllSheetsRequest(spreadSheetURL);
 
                 currentOperation++;
-                CreateEntries(spreadSheetURL, ref audioRefs);
+                UploadLocalAudioReferenceChanges(spreadSheetURL, ref audioRefs);
 
                 currentOperation++;
                 UpdateProgressBar("Cleaning up", 1);
@@ -264,7 +262,7 @@ namespace SoundShout.Editor
             return audioReferencesArray;
         }
 
-        private static void CreateEntries(string spreadsheetURL, ref AudioReference[] audioReferences)
+        private static void UploadLocalAudioReferenceChanges(string spreadsheetURL, ref AudioReference[] audioReferences)
         {
             Dictionary<string, int> categories = new Dictionary<string, int>();
             
