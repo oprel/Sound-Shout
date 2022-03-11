@@ -28,6 +28,7 @@ namespace SoundShout.Editor
         private const string START_RANGE = "A2";
         private const string END_RANGE = "G";
         private const string STANDARD_RANGE = START_RANGE + ":" + END_RANGE;
+        
         private static int totalOperations, currentOperation;
 
         private static Spreadsheet GetSheetData(string spreadSheetUrl)
@@ -398,6 +399,8 @@ namespace SoundShout.Editor
             };
 
             var data = GetSheetData(spreadsheetURL);
+            var headerTextValueRanges = new List<ValueRange>();
+
             foreach (var sheet in data.Sheets)
             {
                 string tabTitle = sheet.Properties.Title;
@@ -407,12 +410,20 @@ namespace SoundShout.Editor
                 int sheetID = (int)sheet.Properties.SheetId;
 
                 SheetsFormatting.ApplyHeaderFormatting(ref batchUpdateSpreadsheetRequest, sheetID);
+                headerTextValueRanges.Add(SheetsFormatting.GetSetHeaderTextUpdateRequest(tabTitle));
             }
 
             if (batchUpdateSpreadsheetRequest.Requests.Count > 0)
             {
                 var batchUpdateRequest = Service.Spreadsheets.BatchUpdate(batchUpdateSpreadsheetRequest, spreadsheetURL); 
                 batchUpdateRequest.Execute();
+            }
+
+            if (headerTextValueRanges.Count > 0)
+            {
+                BatchUpdateValuesRequest requestBody = new BatchUpdateValuesRequest { ValueInputOption = "USER_ENTERED", Data = headerTextValueRanges };
+                SpreadsheetsResource.ValuesResource.BatchUpdateRequest request = Service.Spreadsheets.Values.BatchUpdate(requestBody, spreadsheetURL);
+                request.Execute();
             }
         }
 

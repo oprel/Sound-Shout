@@ -6,7 +6,7 @@ namespace SoundShout.Editor
 {
     public static class SheetsFormatting
     {
-        public static void ApplyHeaderFormatting(ref BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest, int sheetID)
+        internal static void ApplyHeaderFormatting(ref BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest, int sheetID)
         {
             var freezeTopRowRequest = new UpdateSheetPropertiesRequest
             {
@@ -37,6 +37,29 @@ namespace SoundShout.Editor
 
 
             batchUpdateSpreadsheetRequest.Requests.Add( new Request {SetDataValidation = GetStatusValidationRequest(sheetID)});
+        }
+
+        internal static ValueRange GetSetHeaderTextUpdateRequest(string sheetTabName)
+        {
+            var textPerCell = new List<object>
+            {
+                "Event Name",
+                "Is 3D",
+                "Looping?",
+                "Parameters",
+                "Description",
+                "Feedback",
+                "Status"
+            };
+            
+            var valueRange = new ValueRange
+            {
+                Values = new List<IList<object>> {textPerCell},
+                Range = $"{sheetTabName}!A1"
+            };
+
+            
+            return valueRange;
         }
 
         private static SetDataValidationRequest GetStatusValidationRequest(int sheetID)
@@ -94,6 +117,7 @@ namespace SoundShout.Editor
                 HorizontalAlignment = "Center"
             };
         }
+        
         private static GridRange GetHeaderGridRange(int sheetId)
         {
             return new GridRange
