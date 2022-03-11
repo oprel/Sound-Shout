@@ -114,7 +114,7 @@ namespace SoundShout.Editor
                 setupFoldout.Add(Utilities.CreateButton("Open Spreadsheet", OpenGoogleSheetData));
                 setupFoldout.Add(Utilities.CreateButton("Update Spreadsheet", () => { SpreadSheetLogic.UpdateAudioSpreadSheet(LoadSettings().spreadSheetURL); }));
                 setupFoldout.Add(Utilities.CreateButton("Fetch Spreadsheet Changes", () => { SpreadSheetLogic.FetchSpreadsheetChanges(LoadSettings().spreadSheetURL); }));
-                setupFoldout.Add(Utilities.CreateButton("UPLOAD LOCAL Changes", () => { SpreadSheetLogic.ApplyFormattingToTopRows(LoadSettings().spreadSheetURL); }));
+                setupFoldout.Add(Utilities.CreateButton("Apply Formatting", () => { SpreadSheetLogic.ApplyFormattingToTopRows(LoadSettings().spreadSheetURL); }));
                 // setupFoldout.Add(Utilities.CreateButton("Upload Local Changes", () => { SpreadSheetLogic.UploadLocalChanges(LoadSettings().spreadSheetURL); }));
             }
             

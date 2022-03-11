@@ -405,96 +405,8 @@ namespace SoundShout.Editor
                     continue;
                 
                 int sheetID = (int)sheet.Properties.SheetId;
-                    
-                #region Header Format
 
-                // Freeze top row
-                batchUpdateSpreadsheetRequest.Requests.Add(new Request
-                {
-                    UpdateSheetProperties = new UpdateSheetPropertiesRequest
-                    {
-                        Properties = new SheetProperties
-                        {
-                            SheetId = sheetID,
-                            GridProperties = new GridProperties
-                            {
-                                FrozenRowCount = 1
-                            }
-                        },
-                        Fields = "gridProperties.frozenRowCount"
-                    }
-                });
-
-
-                var userEnteredFormat = new CellFormat
-                {
-                    BackgroundColor = new Color
-                    {
-                        Blue = 1,
-                        Red = 0,
-                        Green = 1,
-                        Alpha = 0
-                    },
-                    TextFormat = new TextFormat
-                    {
-                        Bold = true,
-                        FontSize = 14
-                    },
-                    HorizontalAlignment = "Center"
-                };
-
-                //create the update request for cells from the first row
-                var repeatCell = new RepeatCellRequest
-                {
-                    Range = GetHeaderGridRange(sheetID),
-                    Cell = new CellData
-                    {
-                        UserEnteredFormat = userEnteredFormat
-                    },
-                    Fields = "UserEnteredFormat(BackgroundColor,TextFormat,HorizontalAlignment)"
-                };
-
-                batchUpdateSpreadsheetRequest.Requests.Add(new Request
-                {
-                    RepeatCell = repeatCell
-                });
-
-                #endregion
-
-                #region "Status" Validation Column
-
-                // var statusValidation = new SetDataValidationRequest
-                // {
-                //     Range = new GridRange
-                //     {
-                //         StartRowIndex = 1,
-                //         StartColumnIndex = 6,
-                //         EndColumnIndex = 7
-                //     },
-                //     Rule = new DataValidationRule
-                //     {
-                //         Condition = new BooleanCondition
-                //         {
-                //             Type = "ONE_OF_LIST",
-                //             Values = new List<ConditionValue>()
-                //         },
-                //         Strict = true,
-                //         ShowCustomUi = true,
-                //     }
-                // };
-                //
-                // // Dynamically fill the condition with values
-                // foreach (var enumValue in GetStatusEnumValues())
-                // {
-                //     statusValidation.Rule.Condition.Values.Add(new ConditionValue {UserEnteredValue = enumValue});
-                // }
-                //
-                // batchUpdateSpreadsheetRequest.Requests.Add(new Request
-                // {
-                //     SetDataValidation = statusValidation
-                // });
-
-                #endregion
+                SheetsFormatting.ApplyHeaderFormatting(ref batchUpdateSpreadsheetRequest, sheetID);
             }
 
             if (batchUpdateSpreadsheetRequest.Requests.Count > 0)
@@ -504,23 +416,6 @@ namespace SoundShout.Editor
             }
         }
 
-        private static string[] GetStatusEnumValues()
-        {
-            return Enum.GetNames(typeof(AudioReference.Status));
-        }
-
-        private static GridRange GetHeaderGridRange(int sheetId)
-        {
-            return new GridRange
-            {
-                SheetId = sheetId,
-                EndRowIndex = 1,
-                //StartRowIndex = 0,
-                //StartColumnIndex = 0, // Leaving these out will make the whole row bolded!
-                //EndColumnIndex = 6,
-            };
-        }
-        
         public static void AddStyleToTopRow(string spreadSheetURL)
         {
             //get sheet id by sheet name
