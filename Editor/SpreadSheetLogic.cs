@@ -4,14 +4,12 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using UnityEditor;
 using UnityEngine;
-using Color = Google.Apis.Sheets.v4.Data.Color;
 using Object = UnityEngine.Object;
 
 namespace SoundShout.Editor
@@ -137,9 +135,8 @@ namespace SoundShout.Editor
         private static List<string> GetAudioReferenceCategories(IReadOnlyList<AudioReference> audioReferences)
         {
             var tabCategories = new List<string>();
-            for (int i = 0; i < audioReferences.Count; i++)
+            foreach (var audioReference in audioReferences)
             {
-                var audioReference = audioReferences[i];
                 if (!tabCategories.Contains(audioReference.category))
                 {
                     tabCategories.Add(audioReference.category);
@@ -175,11 +172,11 @@ namespace SoundShout.Editor
 
                         bool newAudioReference = true;
                         string fullEventName = $"event:/{eventName}";
-                        for (int i = 0; i < audioReferences.Length; i++)
+                        foreach (var audioRef in audioReferences)
                         {
-                            if (audioReferences[i].fullEventPath == fullEventName)
+                            if (audioRef.fullEventPath == fullEventName)
                             {
-                                audioReferences[i].ApplyChanges(is3D, isLooping, parameters, description, feedback, implementStatus);
+                                audioRef.ApplyChanges(is3D, isLooping, parameters, description, feedback, implementStatus);
                                 newAudioReference = false;
                                 break;
                             }
@@ -272,37 +269,37 @@ namespace SoundShout.Editor
             Dictionary<string, int> categories = new Dictionary<string, int>();
             
             List<ValueRange> data = new List<ValueRange>();
-            for (int i = 0; i < audioReferences.Length; i++)
+            foreach (var audioRef in audioReferences)
             {
-                audioReferences[i].UpdateName();
+                audioRef.UpdateName();
             
                 // If category don't exist, create it
-                if (!categories.ContainsKey(audioReferences[i].category))
+                if (!categories.ContainsKey(audioRef.category))
                 {
                     // indention starts at index 2 in the spreadsheet
-                    categories.Add(audioReferences[i].category, 2);
+                    categories.Add(audioRef.category, 2);
                 }
                 else
                 {
                     // add indention per entry
-                    categories[audioReferences[i].category]++;
+                    categories[audioRef.category]++;
                 }
             
                 var objectList = new List<object>
                 {
-                    audioReferences[i].eventName,
-                    audioReferences[i].is3D ? "3D" : "2D",
-                    audioReferences[i].looping ? "Loop" : "OneShot",
-                    audioReferences[i].parameters,
-                    audioReferences[i].description,
-                    audioReferences[i].feedback,
-                    audioReferences[i].implementStatus.ToString()
+                    audioRef.eventName,
+                    audioRef.is3D ? "3D" : "2D",
+                    audioRef.looping ? "Loop" : "OneShot",
+                    audioRef.parameters,
+                    audioRef.description,
+                    audioRef.feedback,
+                    audioRef.implementStatus.ToString()
                 };
             
                 var valueRange = new ValueRange
                 {
                     Values = new List<IList<object>> { objectList },
-                    Range = $"{audioReferences[i].category}!A{categories[audioReferences[i].category]}"
+                    Range = $"{audioRef.category}!A{categories[audioRef.category]}"
                 };
                 
                 data.Add(valueRange);
@@ -335,15 +332,15 @@ namespace SoundShout.Editor
             var data = GetSheetData(spreadsheetUrl);
             var sheets = GetSpreadsheetTabsList(data);
             List<string> ranges = new List<string>();
-            for (int i = 0; i < sheets.Count; i++)
+            foreach (var sheetTab in sheets)
             {
-                ranges.Add($"{sheets[i]}!{STANDARD_RANGE}");
+                ranges.Add($"{sheetTab}!{STANDARD_RANGE}");
             }
 
             BatchClearValuesRequest requestBody = new BatchClearValuesRequest { Ranges = ranges };
 
             SpreadsheetsResource.ValuesResource.BatchClearRequest request = Service.Spreadsheets.Values.BatchClear(requestBody, spreadsheetUrl);
-            var response = request.Execute();
+            request.Execute();
         }
 
         private static void CreateMissingSheetTabs(string spreadsheetURL, Dictionary<string, int> categories)
@@ -406,19 +403,22 @@ namespace SoundShout.Editor
                 string tabTitle = sheet.Properties.Title;
                 if (tabTitle == "~Overview")
                     continue;
-                
-                int sheetID = (int)sheet.Properties.SheetId;
 
+                // ReSharper disable once PossibleInvalidOperationException
+                int sheetID = (int) sheet.Properties.SheetId;
                 SheetsFormatting.ApplyHeaderFormatting(ref batchUpdateSpreadsheetRequest, sheetID);
+
                 headerTextValueRanges.Add(SheetsFormatting.GetSetHeaderTextUpdateRequest(tabTitle));
             }
 
+            // Apply formatting
             if (batchUpdateSpreadsheetRequest.Requests.Count > 0)
             {
                 var batchUpdateRequest = Service.Spreadsheets.BatchUpdate(batchUpdateSpreadsheetRequest, spreadsheetURL); 
                 batchUpdateRequest.Execute();
             }
 
+            // Apply header text
             if (headerTextValueRanges.Count > 0)
             {
                 BatchUpdateValuesRequest requestBody = new BatchUpdateValuesRequest { ValueInputOption = "USER_ENTERED", Data = headerTextValueRanges };
@@ -426,58 +426,5 @@ namespace SoundShout.Editor
                 request.Execute();
             }
         }
-
-        public static void AddStyleToTopRow(string spreadSheetURL)
-        {
-            //get sheet id by sheet name
-            Spreadsheet spr = GetSheetData(spreadSheetURL);
-            Sheet sh = spr.Sheets.FirstOrDefault(s => s.Properties.Title == "Generic");
-            int sheetId = (int)sh.Properties.SheetId;
-
-            //define cell color
-            var userEnteredFormat = new CellFormat
-            {
-                BackgroundColor = new Color
-                {
-                    Blue = 0,
-                    Red = 1,
-                    Green = (float)0.5,
-                    Alpha = (float)0.1
-                },
-                TextFormat = new TextFormat
-                {
-                    Bold = true,
-                    FontSize = 14
-                },
-                HorizontalAlignment = "Center"
-            };
-            BatchUpdateSpreadsheetRequest bussr = new BatchUpdateSpreadsheetRequest();
-
-            //create the update request for cells from the first row
-            var updateCellsRequest = new Request
-            {
-                RepeatCell = new RepeatCellRequest
-                {
-                    Range = new GridRange
-                    {
-                        SheetId = sheetId,
-                        StartColumnIndex = 0,
-                        StartRowIndex = 0,
-                        EndColumnIndex = 28,
-                        EndRowIndex = 1
-                    },
-                    Cell = new CellData
-                    {
-                        UserEnteredFormat = userEnteredFormat
-                    },
-                    Fields = "UserEnteredFormat(BackgroundColor,TextFormat,HorizontalAlignment)"
-                }
-            };
-            bussr.Requests = new List<Request>();
-            bussr.Requests.Add(updateCellsRequest);
-            var bur = Service.Spreadsheets.BatchUpdate(bussr, spreadSheetURL);
-            bur.Execute();
-        }
-
     }
 }
