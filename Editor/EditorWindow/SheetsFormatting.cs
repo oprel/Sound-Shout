@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using Google.Apis.Sheets.v4.Data;
+using Color = Google.Apis.Sheets.v4.Data.Color;
 
 namespace SoundShout.Editor
 {
     public static class SheetsFormatting
     {
+        #region Header
+        
         internal static void ApplyHeaderFormatting(ref BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest, int sheetID)
         {
             var freezeTopRowRequest = new UpdateSheetPropertiesRequest
@@ -43,9 +46,6 @@ namespace SoundShout.Editor
                 Fields = "UserEnteredFormat(BackgroundColor,TextFormat,HorizontalAlignment)"
             };
             batchUpdateSpreadsheetRequest.Requests.Add( new Request {RepeatCell = repeatCell});
-
-
-            batchUpdateSpreadsheetRequest.Requests.Add( new Request {SetDataValidation = GetStatusValidationRequest(sheetID)});
         }
 
         internal static ValueRange GetSetHeaderTextUpdateRequest(string sheetTabName)
@@ -69,43 +69,6 @@ namespace SoundShout.Editor
 
             
             return valueRange;
-        }
-
-        private static SetDataValidationRequest GetStatusValidationRequest(int sheetID)
-        {
-            var statusValidation = new SetDataValidationRequest
-            {
-                Range = new GridRange
-                {
-                    SheetId = sheetID,
-                    StartRowIndex = 1,
-                    StartColumnIndex = 6,
-                    EndColumnIndex = 7
-                },
-                Rule = new DataValidationRule
-                {
-                    Condition = new BooleanCondition
-                    {
-                        Type = "ONE_OF_LIST",
-                        Values = new List<ConditionValue>()
-                    },
-                    Strict = true,
-                    ShowCustomUi = true,
-                }
-            };
-            
-            // Dynamically fill the condition with values
-            foreach (var enumValue in GetStatusEnumValues())
-            {
-                statusValidation.Rule.Condition.Values.Add(new ConditionValue {UserEnteredValue = enumValue});
-            }
-
-            return statusValidation;
-        }
-        
-        private static IEnumerable<string> GetStatusEnumValues()
-        {
-            return Enum.GetNames(typeof(AudioReference.ImplementationStatus));
         }
 
         private static CellFormat GetHeaderCellFormat()
@@ -138,5 +101,103 @@ namespace SoundShout.Editor
                 //EndColumnIndex = 6,
             };
         }
+
+        #endregion
+        
+        #region Rows
+
+        public static void ApplyRowFormatting(ref BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest, int sheetID)
+        {
+            batchUpdateSpreadsheetRequest.Requests.Add( new Request {SetDataValidation = GetStatusValidationRequest(sheetID)});
+            
+            batchUpdateSpreadsheetRequest.Requests.Add( new Request {UpdateConditionalFormatRule = GetEnumConditionalFormatting(sheetID)});
+        }
+
+        private static UpdateConditionalFormatRuleRequest GetEnumConditionalFormatting(int sheetID)
+        {
+            return new UpdateConditionalFormatRuleRequest
+            {
+                Rule = new ConditionalFormatRule
+                {
+                    Ranges = new List<GridRange>
+                    {
+                        GetRowGridRange(sheetID),
+                    },
+                    BooleanRule = new BooleanRule
+                    {
+                        Condition = new BooleanCondition
+                        {
+                            Type = "CUSTOM_FORMULA",
+                            Values = new List<ConditionValue>
+                            {
+                                new ConditionValue
+                                {
+                                    UserEnteredValue = "=$G2=\"TODO\""
+                                }
+                            },
+                        },
+                        Format = GetRowEnumFormat()
+                    },
+                }
+            };
+        }
+
+        private static CellFormat GetRowEnumFormat()
+        {
+            return new CellFormat{
+                BackgroundColor = new Color()
+                {
+                    Red =   (float)162/255,
+                    Green = (float)210/255,
+                    Blue =  (float)234/255,
+                    Alpha = 0
+                },
+            };
+        }
+
+        private static GridRange GetRowGridRange(int sheetId)
+        {
+            return new GridRange
+            {
+                SheetId = sheetId,
+                StartColumnIndex = 0,
+                StartRowIndex = 1
+            };
+        }
+        
+        private static SetDataValidationRequest GetStatusValidationRequest(int sheetID)
+        {
+            var statusValidation = new SetDataValidationRequest
+            {
+                Range = new GridRange
+                {
+                    SheetId = sheetID,
+                    StartRowIndex = 1,
+                    StartColumnIndex = 6,
+                    EndColumnIndex = 7
+                },
+                Rule = new DataValidationRule
+                {
+                    Condition = new BooleanCondition
+                    {
+                        Type = "ONE_OF_LIST",
+                        Values = new List<ConditionValue>()
+                    },
+                    Strict = true,
+                    ShowCustomUi = true,
+                }
+            };
+
+            // Dynamically fill the condition with values
+            var enumNames = Enum.GetNames(typeof(AudioReference.ImplementationStatus));
+            foreach (var enumValue in enumNames)
+            {
+                statusValidation.Rule.Condition.Values.Add(new ConditionValue {UserEnteredValue = enumValue});
+            }
+
+            return statusValidation;
+        }
+
+        #endregion
     }
 }

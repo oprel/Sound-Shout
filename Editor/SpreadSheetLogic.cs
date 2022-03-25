@@ -317,7 +317,7 @@ namespace SoundShout.Editor
             SpreadsheetsResource.ValuesResource.BatchUpdateRequest request = Service.Spreadsheets.Values.BatchUpdate(requestBody, spreadsheetURL);
             request.Execute();
 
-            ApplyFormattingToTopRows(spreadsheetURL);
+            ApplyFormatting(spreadsheetURL);
 #if DEBUGGING
         Debug.Log($"Added {audioReferences.Length} audio refs: {JsonConvert.SerializeObject(requestBody)}");
 #endif
@@ -378,7 +378,7 @@ namespace SoundShout.Editor
 
         }
 
-        public static void ApplyFormattingToTopRows(string spreadsheetURL)
+        public static void ApplyFormatting(string spreadsheetURL)
         {
             var batchUpdateSpreadsheetRequest = new BatchUpdateSpreadsheetRequest
             {
@@ -397,6 +397,7 @@ namespace SoundShout.Editor
                 // ReSharper disable once PossibleInvalidOperationException
                 int sheetID = (int) sheet.Properties.SheetId;
                 SheetsFormatting.ApplyHeaderFormatting(ref batchUpdateSpreadsheetRequest, sheetID);
+                SheetsFormatting.ApplyRowFormatting(ref batchUpdateSpreadsheetRequest, sheetID);
 
                 headerTextValueRanges.Add(SheetsFormatting.GetSetHeaderTextUpdateRequest(tabTitle));
             }
