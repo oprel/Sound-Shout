@@ -1,3 +1,0 @@
-{
-    "spreadSheetURL": "1wYPPbpSjRrj202KbyfPbtsv5zYCMxHiJDyszFbhVac4"
-}
