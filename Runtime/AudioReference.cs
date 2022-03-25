@@ -1,37 +1,40 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 [CreateAssetMenu]
 public class AudioReference : ScriptableObject
 {
     public string fullEventPath;
+    public bool looping;
+    public bool is3D;
 
     public override string ToString()
     {
         return fullEventPath;
     }
 
-    #region Spreadsheet
-
-    [Header("Spreadsheet")] 
-    public bool is3D;
-    public bool looping;
-    
-    #region Editor Things
+    #region Editor Spredsheet Things
     
 #if UNITY_EDITOR
+    [Header("Spreadsheet")] 
     [TextArea] public string parameters;
     [TextArea] public string description;
     [TextArea] public string feedback;
     
-    public Status implementStatus = Status.TODO;
+    public ImplementationStatus implementImplementationStatus = ImplementationStatus.TODO;
     public string category;
     public string eventName;
 
-    public enum Status { Delete, TODO, Created, Implemented, Feedback, Iterate, Done };
+    public enum ImplementationStatus { Delete, TODO, Created, Implemented, Feedback, Iterate, Done };
     
     public void UpdateName()
     {
         string assetPath = UnityEditor.AssetDatabase.GetAssetPath(this);
+        if (!IsAssetPlacedInValidFolder(assetPath))
+        {
+            return;
+        }
+        
         assetPath = assetPath.Replace("Assets/Audio/", "");
         assetPath = assetPath.Replace(".asset", "");
         
@@ -53,7 +56,21 @@ public class AudioReference : ScriptableObject
         UnityEditor.EditorUtility.SetDirty(this);
     }
 
-    public void ApplyChanges(bool is3DSound, bool isLooping, string parameters, string description, string feedback, Status status)
+    private static bool IsAssetPlacedInValidFolder(string assetPath)
+    {
+        System.IO.DirectoryInfo parentFolder = System.IO.Directory.GetParent(assetPath);
+        switch (parentFolder.Name)
+        {
+            case "Assets":
+                throw new NotSupportedException($"AudioReference \"{assetPath}\" is placed outside \"Audio\" folder!");
+            case "Audio":
+                throw new NotSupportedException($"AudioReference \"{assetPath}\" is placed in root \"Audio\" folder. Please place it inside a sub-folder.");
+            default:
+                return true;
+        }
+    }
+    
+    public void ApplyChanges(bool is3DSound, bool isLooping, string parameters, string description, string feedback, ImplementationStatus implementationStatus)
     {
         bool saveUpdates = false;
         string changes = null;
@@ -93,10 +110,10 @@ public class AudioReference : ScriptableObject
             saveUpdates = true;
         }
 
-        if (implementStatus != status)
+        if (implementImplementationStatus != implementationStatus)
         {
-            changes += $"Status: {implementStatus}->{status} ";
-            implementStatus = status;
+            changes += $"Status: {implementImplementationStatus}->{implementationStatus} ";
+            implementImplementationStatus = implementationStatus;
             saveUpdates = true;
         }
 
@@ -106,14 +123,14 @@ public class AudioReference : ScriptableObject
         }
     }
 
-    public void SetupVariables(bool is3DSound, bool isLooping, string parameters, string description, string feedback, Status status)
+    public void SetupVariables(bool is3DSound, bool isLooping, string parameters, string description, string feedback, ImplementationStatus implementationStatus)
     {
         is3D = is3DSound;
         looping = isLooping;
         this.parameters = parameters;
         this.description = description;
         this.feedback = feedback;
-        implementStatus = status;
+        implementImplementationStatus = implementationStatus;
     }
 
     public void SetupVariablesIfNeeded()
@@ -125,8 +142,6 @@ public class AudioReference : ScriptableObject
     }
     
 #endif
-
-    #endregion
     
     #endregion
 }

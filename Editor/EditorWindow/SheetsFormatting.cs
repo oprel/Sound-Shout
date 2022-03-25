@@ -96,7 +96,7 @@ namespace SoundShout.Editor
         
         private static IEnumerable<string> GetStatusEnumValues()
         {
-            return Enum.GetNames(typeof(AudioReference.Status));
+            return Enum.GetNames(typeof(AudioReference.ImplementationStatus));
         }
 
         private static CellFormat GetHeaderCellFormat()

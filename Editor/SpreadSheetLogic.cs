@@ -166,7 +166,7 @@ namespace SoundShout.Editor
                         string description = (string)row[(int)UsedRows.Description];
                         string feedback = (string)row[(int)UsedRows.Feedback];
 
-                        AudioReference.Status implementStatus = (AudioReference.Status)Enum.Parse(typeof(AudioReference.Status), (string)row[(int)UsedRows.ImplementStatus]);
+                        AudioReference.ImplementationStatus implementImplementationStatus = (AudioReference.ImplementationStatus)Enum.Parse(typeof(AudioReference.ImplementationStatus), (string)row[(int)UsedRows.ImplementStatus]);
 
                         bool newAudioReference = true;
                         string fullEventName = $"event:/{eventName}";
@@ -174,19 +174,19 @@ namespace SoundShout.Editor
                         {
                             if (audioRef.fullEventPath == fullEventName)
                             {
-                                audioRef.ApplyChanges(is3D, isLooping, parameters, description, feedback, implementStatus);
+                                audioRef.ApplyChanges(is3D, isLooping, parameters, description, feedback, implementImplementationStatus);
                                 newAudioReference = false;
                                 break;
                             }
                         }
 
-                        if (implementStatus == AudioReference.Status.Delete)
+                        if (implementImplementationStatus == AudioReference.ImplementationStatus.Delete)
                         {
                             Debug.Log($"Skipped creating audio reference for \"{eventName}\" as it's marked as Delete!");
                         }
                         else if (newAudioReference)
                         {
-                            var newSound = CreateNewAudioReferenceAsset(eventName, is3D, isLooping, parameters, description, feedback, implementStatus);
+                            var newSound = CreateNewAudioReferenceAsset(eventName, is3D, isLooping, parameters, description, feedback, implementImplementationStatus);
                             newAudioRefsList.Add(newSound);
                         }
 #if DEBUGGING
@@ -209,7 +209,7 @@ namespace SoundShout.Editor
             }
         }
 
-        private static AudioReference CreateNewAudioReferenceAsset(string eventName, bool is3D, bool isLooping, string parameters, string description, string feedback, AudioReference.Status implementStatus)
+        private static AudioReference CreateNewAudioReferenceAsset(string eventName, bool is3D, bool isLooping, string parameters, string description, string feedback, AudioReference.ImplementationStatus implementImplementationStatus)
         {
             AudioReference newAudioReference = ScriptableObject.CreateInstance<AudioReference>();
             Undo.RecordObject(newAudioReference, "Created new AudioReference");
@@ -233,7 +233,7 @@ namespace SoundShout.Editor
                 }
 
                 AssetDatabase.CreateAsset(newAudioReference, assetPath);
-                newAudioReference.SetupVariables(is3D, isLooping, parameters, description, feedback, implementStatus);
+                newAudioReference.SetupVariables(is3D, isLooping, parameters, description, feedback, implementImplementationStatus);
                 newAudioReference.UpdateName();
 
                 Debug.Log($"<color=cyan>Created new AudioReference: \"{eventName}\"</color>");
@@ -291,7 +291,7 @@ namespace SoundShout.Editor
                     audioRef.parameters,
                     audioRef.description,
                     audioRef.feedback,
-                    audioRef.implementStatus.ToString()
+                    audioRef.implementImplementationStatus.ToString()
                 };
             
                 var valueRange = new ValueRange
