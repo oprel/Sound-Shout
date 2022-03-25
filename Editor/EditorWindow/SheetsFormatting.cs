@@ -22,7 +22,16 @@ namespace SoundShout.Editor
             };
             batchUpdateSpreadsheetRequest.Requests.Add( new Request {UpdateSheetProperties = freezeTopRowRequest});
 
-            
+            // Auto resize all headers
+            batchUpdateSpreadsheetRequest.Requests.Add( new Request {AutoResizeDimensions = new AutoResizeDimensionsRequest
+            {
+                Dimensions = new DimensionRange
+                {
+                    SheetId = sheetID,
+                    Dimension = "COLUMNS",
+                }
+            }});
+
             //create the update request for cells from the first row
             var repeatCell = new RepeatCellRequest
             {
