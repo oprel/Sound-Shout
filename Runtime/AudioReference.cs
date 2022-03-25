@@ -5,8 +5,8 @@ using UnityEngine;
 public class AudioReference : ScriptableObject
 {
     public string fullEventPath;
-    public bool looping;
     public bool is3D;
+    public bool looping;
 
     public override string ToString()
     {
