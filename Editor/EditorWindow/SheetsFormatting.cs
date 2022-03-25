@@ -8,7 +8,7 @@ namespace SoundShout.Editor
     public static class SheetsFormatting
     {
         #region Header
-        
+
         internal static void ApplyHeaderFormatting(ref BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest, int sheetID)
         {
             var freezeTopRowRequest = new UpdateSheetPropertiesRequest
@@ -23,7 +23,21 @@ namespace SoundShout.Editor
                 },
                 Fields = "gridProperties.frozenRowCount"
             };
-            batchUpdateSpreadsheetRequest.Requests.Add( new Request {UpdateSheetProperties = freezeTopRowRequest});
+            batchUpdateSpreadsheetRequest.Requests.Add(new Request {UpdateSheetProperties = freezeTopRowRequest});
+
+            // Delete columns that are not used!
+            batchUpdateSpreadsheetRequest.Requests.Add(new Request
+            {
+                DeleteDimension = new DeleteDimensionRequest
+                {
+                    Range = new DimensionRange
+                    {
+                        SheetId = sheetID,
+                        Dimension = "COLUMNS",
+                        StartIndex = 7
+                    }
+                }
+            });
 
             // Auto resize all headers
             batchUpdateSpreadsheetRequest.Requests.Add( new Request {AutoResizeDimensions = new AutoResizeDimensionsRequest
