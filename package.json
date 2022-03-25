@@ -6,7 +6,7 @@
     "url": ""
   },
   "displayName": "SWM Sound Shout",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "unity": "2019.4",
   "description": "Conveniently hook up audio events and generate Google Sheets",
   "keywords": [
