@@ -310,14 +310,37 @@ namespace SoundShout.Editor
             
             data.Add(updateText);
 
-            CreateMissingSheetTabs(spreadsheetURL, categories);
+            bool hasCreatedNewTabs = CreateMissingSheetTabs(spreadsheetURL, categories);
 
             BatchUpdateValuesRequest requestBody = new BatchUpdateValuesRequest { ValueInputOption = "USER_ENTERED", Data = data };
             
             SpreadsheetsResource.ValuesResource.BatchUpdateRequest request = Service.Spreadsheets.Values.BatchUpdate(requestBody, spreadsheetURL);
             request.Execute();
 
+            if (hasCreatedNewTabs)
+            {
+                var spreadsheet = GetSheetData(spreadsheetURL);
+                var batchUpdateSpreadsheetRequest = new BatchUpdateSpreadsheetRequest
+                {
+                    Requests = new List<Request>()
+                };
+                
+                foreach (var sheet in spreadsheet.Sheets)
+                {
+                    string tabTitle = sheet.Properties.Title;
+                    if (tabTitle == "~Overview")
+                        continue;
+
+                    int sheetID = (int) sheet.Properties.SheetId;
+                    SheetsFormatting.AddEmptyConditionalFormattingRequests(ref batchUpdateSpreadsheetRequest, sheetID);
+                }
+                
+                var batchUpdateRequest = Service.Spreadsheets.BatchUpdate(batchUpdateSpreadsheetRequest, spreadsheetURL); 
+                batchUpdateRequest.Execute();
+            }
+            
             ApplyFormatting(spreadsheetURL);
+            
 #if DEBUGGING
         Debug.Log($"Added {audioReferences.Length} audio refs: {JsonConvert.SerializeObject(requestBody)}");
 #endif
@@ -339,7 +362,7 @@ namespace SoundShout.Editor
             request.Execute();
         }
 
-        private static void CreateMissingSheetTabs(string spreadsheetURL, Dictionary<string, int> categories)
+        private static bool CreateMissingSheetTabs(string spreadsheetURL, Dictionary<string, int> categories)
         {
             var data = GetSheetData(spreadsheetURL);
             var existingTabs = GetSpreadsheetTabsList(data);
@@ -360,6 +383,12 @@ namespace SoundShout.Editor
                     Properties = new SheetProperties
                     {
                         Title = category.Key,
+                        GridProperties = new GridProperties
+                        {
+                            FrozenRowCount = 1,
+                            ColumnCount = 7,
+                            RowCount = 100,
+                        }
                     }
                 };
 
@@ -369,13 +398,16 @@ namespace SoundShout.Editor
                 });
             }
 
-            if (batchUpdateSpreadsheetRequest.Requests.Count > 0)
+            bool shouldUpdate = batchUpdateSpreadsheetRequest.Requests.Count > 0;
+            if (shouldUpdate)
             {
-                var batchUpdateRequest =
-                    Service.Spreadsheets.BatchUpdate(batchUpdateSpreadsheetRequest, spreadsheetURL);
+                var batchUpdateRequest = Service.Spreadsheets.BatchUpdate(batchUpdateSpreadsheetRequest, spreadsheetURL);
                 batchUpdateRequest.Execute();
+
+                return true;
             }
 
+            return false;
         }
 
         public static void ApplyFormatting(string spreadsheetURL)

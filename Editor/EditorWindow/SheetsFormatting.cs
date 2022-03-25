@@ -11,41 +11,13 @@ namespace SoundShout.Editor
 
         internal static void ApplyHeaderFormatting(ref BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest, int sheetID)
         {
-            var freezeTopRowRequest = new UpdateSheetPropertiesRequest
-            {
-                Properties = new SheetProperties
-                {
-                    SheetId = sheetID,
-                    GridProperties = new GridProperties
-                    {
-                        FrozenRowCount = 1
-                    }
-                },
-                Fields = "gridProperties.frozenRowCount"
-            };
-            batchUpdateSpreadsheetRequest.Requests.Add(new Request {UpdateSheetProperties = freezeTopRowRequest});
-
-            // Delete columns that are not used!
-            batchUpdateSpreadsheetRequest.Requests.Add(new Request
-            {
-                DeleteDimension = new DeleteDimensionRequest
-                {
-                    Range = new DimensionRange
-                    {
-                        SheetId = sheetID,
-                        Dimension = "COLUMNS",
-                        StartIndex = 7
-                    }
-                }
-            });
-
             // Auto resize all headers
             batchUpdateSpreadsheetRequest.Requests.Add( new Request {AutoResizeDimensions = new AutoResizeDimensionsRequest
             {
                 Dimensions = new DimensionRange
                 {
                     SheetId = sheetID,
-                    Dimension = "COLUMNS",
+                    Dimension = "COLUMNS"
                 }
             }});
 
@@ -55,7 +27,7 @@ namespace SoundShout.Editor
                 Range = GetHeaderGridRange(sheetID),
                 Cell = new CellData
                 {
-                    UserEnteredFormat = GetHeaderCellFormat(),
+                    UserEnteredFormat = GetHeaderCellFormat()
                 },
                 Fields = "UserEnteredFormat(BackgroundColor,TextFormat,HorizontalAlignment)"
             };
@@ -109,7 +81,7 @@ namespace SoundShout.Editor
             return new GridRange
             {
                 SheetId = sheetId,
-                EndRowIndex = 1,
+                EndRowIndex = 1
                 //StartRowIndex = 0,
                 //StartColumnIndex = 0, // Leaving these out will make the whole row bolded!
                 //EndColumnIndex = 6,
@@ -120,52 +92,128 @@ namespace SoundShout.Editor
         
         #region Rows
 
+        internal static void AddEmptyConditionalFormattingRequests(ref BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest, int sheetID)
+        {
+            foreach (AudioReference.ImplementationStatus enumValue in Enum.GetValues(typeof(AudioReference.ImplementationStatus)))
+            {
+                batchUpdateSpreadsheetRequest.Requests.Add( new Request { AddConditionalFormatRule = new AddConditionalFormatRuleRequest { Rule = GetConditionFormatRule(sheetID, enumValue, new Color()) } });
+            }
+        }
+        
         public static void ApplyRowFormatting(ref BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest, int sheetID)
         {
             batchUpdateSpreadsheetRequest.Requests.Add( new Request {SetDataValidation = GetStatusValidationRequest(sheetID)});
-            
-            batchUpdateSpreadsheetRequest.Requests.Add( new Request {UpdateConditionalFormatRule = GetEnumConditionalFormatting(sheetID)});
+            UpdateStatusConditionalFormatting(ref batchUpdateSpreadsheetRequest, sheetID);
         }
 
-        private static UpdateConditionalFormatRuleRequest GetEnumConditionalFormatting(int sheetID)
+        private static void UpdateStatusConditionalFormatting(ref BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest, int sheetID)
         {
-            return new UpdateConditionalFormatRuleRequest
+            batchUpdateSpreadsheetRequest.Requests.Add( new Request
             {
-                Rule = new ConditionalFormatRule
+                UpdateConditionalFormatRule = CreateConditionalFormat(sheetID, AudioReference.ImplementationStatus.Delete, new Color
                 {
-                    Ranges = new List<GridRange>
-                    {
-                        GetRowGridRange(sheetID),
-                    },
-                    BooleanRule = new BooleanRule
-                    {
-                        Condition = new BooleanCondition
-                        {
-                            Type = "CUSTOM_FORMULA",
-                            Values = new List<ConditionValue>
-                            {
-                                new ConditionValue
-                                {
-                                    UserEnteredValue = "=$G2=\"TODO\""
-                                }
-                            },
-                        },
-                        Format = GetRowEnumFormat()
-                    },
-                }
-            };
-        }
-
-        private static CellFormat GetRowEnumFormat()
-        {
-            return new CellFormat{
-                BackgroundColor = new Color()
+                    Red =   (float)255/255,
+                    Green = 0,
+                    Blue =  0
+                })
+            });
+            
+            batchUpdateSpreadsheetRequest.Requests.Add( new Request
+            {
+                UpdateConditionalFormatRule = CreateConditionalFormat(sheetID, AudioReference.ImplementationStatus.TODO, new Color
                 {
                     Red =   (float)162/255,
                     Green = (float)210/255,
-                    Blue =  (float)234/255,
-                    Alpha = 0
+                    Blue =  (float)234/255
+                })
+            });
+            
+            batchUpdateSpreadsheetRequest.Requests.Add( new Request
+            {
+                UpdateConditionalFormatRule = CreateConditionalFormat(sheetID, AudioReference.ImplementationStatus.Created, new Color
+                {
+                    Red =   (float)255/255,
+                    Green = (float)211/255,
+                    Blue =  (float)245/255
+                })
+            });
+            
+            batchUpdateSpreadsheetRequest.Requests.Add( new Request
+            {
+                UpdateConditionalFormatRule = CreateConditionalFormat(sheetID, AudioReference.ImplementationStatus.Implemented, new Color
+                {
+                    Red =   (float)255/255,
+                    Green = (float)217/255,
+                    Blue =  (float)102/255
+                })
+            });
+            
+            batchUpdateSpreadsheetRequest.Requests.Add( new Request
+            {
+                UpdateConditionalFormatRule = CreateConditionalFormat(sheetID, AudioReference.ImplementationStatus.Feedback, new Color
+                {
+                    Red =   (float)249/255,
+                    Green = (float)237/255,
+                    Blue =  (float)174/255
+                })
+            });
+            
+            batchUpdateSpreadsheetRequest.Requests.Add( new Request
+            {
+                UpdateConditionalFormatRule = CreateConditionalFormat(sheetID, AudioReference.ImplementationStatus.Iterate, new Color
+                {
+                    Red =   (float)180/255,
+                    Green = (float)167/255,
+                    Blue =  (float)214/255
+                })
+            });
+            
+            batchUpdateSpreadsheetRequest.Requests.Add( new Request
+            {
+                UpdateConditionalFormatRule = CreateConditionalFormat(sheetID, AudioReference.ImplementationStatus.Done, new Color
+                {
+                    Red =   (float)88/255,
+                    Green = (float)239/255,
+                    Blue =  (float)160/255
+                })
+            });
+        }
+
+        private static UpdateConditionalFormatRuleRequest CreateConditionalFormat(int sheetID, AudioReference.ImplementationStatus status, Color rowColor)
+        {
+            return new UpdateConditionalFormatRuleRequest
+            {
+                Index = (int)status,
+                Rule = GetConditionFormatRule(sheetID, status, rowColor),
+            };
+        }
+
+        private static ConditionalFormatRule GetConditionFormatRule(int sheetID, AudioReference.ImplementationStatus status, Color rowColor)
+        {
+            return new ConditionalFormatRule
+            {
+                Ranges = new List<GridRange>
+                {
+                    GetRowGridRange(sheetID)
                 },
+                BooleanRule = new BooleanRule
+                {
+                    Condition = new BooleanCondition
+                    {
+                        Type = "CUSTOM_FORMULA",
+                        Values = new List<ConditionValue>
+                        {
+                            new ConditionValue
+                            {
+                                UserEnteredValue = $"=$G2=\"{status.ToString()}\""
+                            }
+                        }
+                    },
+                    Format = new CellFormat
+                    {
+                        BackgroundColor = rowColor
+                    }
+                }
             };
         }
 
@@ -198,12 +246,12 @@ namespace SoundShout.Editor
                         Values = new List<ConditionValue>()
                     },
                     Strict = true,
-                    ShowCustomUi = true,
+                    ShowCustomUi = true
                 }
             };
 
             // Dynamically fill the condition with values
-            var enumNames = Enum.GetNames(typeof(AudioReference.ImplementationStatus));
+            var enumNames = GetStatusEnumNameArray();
             foreach (var enumValue in enumNames)
             {
                 statusValidation.Rule.Condition.Values.Add(new ConditionValue {UserEnteredValue = enumValue});
@@ -212,6 +260,11 @@ namespace SoundShout.Editor
             return statusValidation;
         }
 
+        private static string[] GetStatusEnumNameArray()
+        {
+            return Enum.GetNames(typeof(AudioReference.ImplementationStatus));
+        }
+        
         #endregion
     }
 }
