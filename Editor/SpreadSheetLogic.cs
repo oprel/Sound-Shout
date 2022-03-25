@@ -234,7 +234,7 @@ namespace SoundShout.Editor
 
                 AssetDatabase.CreateAsset(newAudioReference, assetPath);
                 newAudioReference.SetupVariables(is3D, isLooping, parameters, description, feedback, implementImplementationStatus);
-                newAudioReference.UpdateName();
+                newAudioReference.UpdateEventName();
 
                 Debug.Log($"<color=cyan>Created new AudioReference: \"{eventName}\"</color>");
                 return newAudioReference;
@@ -256,7 +256,7 @@ namespace SoundShout.Editor
             {
                 var audioReference = AssetDatabase.LoadAssetAtPath<AudioReference>(AssetDatabase.GUIDToAssetPath(audioReferences[i]));
                 audioReferencesArray[i] = audioReference;
-                audioReference.SetupVariablesIfNeeded();
+                audioReference.UpdateEventName();
             }
 
             return audioReferencesArray;
@@ -269,8 +269,6 @@ namespace SoundShout.Editor
             List<ValueRange> data = new List<ValueRange>();
             foreach (var audioRef in audioReferences)
             {
-                audioRef.UpdateName();
-            
                 // If category don't exist, create it
                 if (!categories.ContainsKey(audioRef.category))
                 {
@@ -312,7 +310,6 @@ namespace SoundShout.Editor
             
             data.Add(updateText);
 
-
             CreateMissingSheetTabs(spreadsheetURL, categories);
 
             BatchUpdateValuesRequest requestBody = new BatchUpdateValuesRequest { ValueInputOption = "USER_ENTERED", Data = data };
@@ -320,6 +317,7 @@ namespace SoundShout.Editor
             SpreadsheetsResource.ValuesResource.BatchUpdateRequest request = Service.Spreadsheets.Values.BatchUpdate(requestBody, spreadsheetURL);
             request.Execute();
 
+            ApplyFormattingToTopRows(spreadsheetURL);
 #if DEBUGGING
         Debug.Log($"Added {audioReferences.Length} audio refs: {JsonConvert.SerializeObject(requestBody)}");
 #endif
@@ -351,7 +349,6 @@ namespace SoundShout.Editor
                 Requests = new List<Request>()
             };
 
-            bool addedNewTabs = false;
             foreach (var category in categories)
             {
                 // Don't duplicate existing tabs
@@ -377,13 +374,8 @@ namespace SoundShout.Editor
                 var batchUpdateRequest =
                     Service.Spreadsheets.BatchUpdate(batchUpdateSpreadsheetRequest, spreadsheetURL);
                 batchUpdateRequest.Execute();
-                addedNewTabs = true;
             }
 
-            ApplyFormattingToTopRows(spreadsheetURL);
-            if (addedNewTabs)
-            {
-            }
         }
 
         public static void ApplyFormattingToTopRows(string spreadsheetURL)

@@ -27,7 +27,7 @@ public class AudioReference : ScriptableObject
 
     public enum ImplementationStatus { Delete, TODO, Created, Implemented, Feedback, Iterate, Done };
     
-    public void UpdateName()
+    public void UpdateEventName()
     {
         string assetPath = UnityEditor.AssetDatabase.GetAssetPath(this);
         if (!IsAssetPlacedInValidFolder(assetPath))
@@ -133,14 +133,6 @@ public class AudioReference : ScriptableObject
         implementImplementationStatus = implementationStatus;
     }
 
-    public void SetupVariablesIfNeeded()
-    {
-        if (string.IsNullOrEmpty(fullEventPath))
-        {
-            UpdateName();
-        }
-    }
-    
 #endif
     
     #endregion

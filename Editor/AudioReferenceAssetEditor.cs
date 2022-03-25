@@ -11,9 +11,9 @@ namespace SoundShout.Editor
             DrawDefaultInspector();
 
             AudioReference myScript = (AudioReference)target;
-            if (GUILayout.Button("Update FMOD Name"))
+            if (GUILayout.Button("Update Event Name"))
             {
-                myScript.UpdateName();
+                myScript.UpdateEventName();
             }
         }
     }

@@ -113,8 +113,8 @@ namespace SoundShout.Editor
             return new CellFormat{
                 BackgroundColor = new Color
                 {
-                    Blue = 0,
-                    Red = 0,
+                    Blue = 1,
+                    Red = 1,
                     Green = 1,
                     Alpha = 0
                 },
