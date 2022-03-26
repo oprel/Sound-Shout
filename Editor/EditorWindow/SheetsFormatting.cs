@@ -102,11 +102,107 @@ namespace SoundShout.Editor
         
         public static void ApplyRowFormatting(ref BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest, int sheetID)
         {
-            batchUpdateSpreadsheetRequest.Requests.Add( new Request {SetDataValidation = GetStatusValidationRequest(sheetID)});
-            UpdateStatusConditionalFormatting(ref batchUpdateSpreadsheetRequest, sheetID);
+            batchUpdateSpreadsheetRequest.Requests.Add( new Request {SetDataValidation = GetImplementationStatusValidationRequest(sheetID)});
+            batchUpdateSpreadsheetRequest.Requests.Add( new Request {SetDataValidation = GetIs3DValidationRequest(sheetID)});
+            batchUpdateSpreadsheetRequest.Requests.Add( new Request {SetDataValidation = GetIsLoopingValidationRequest(sheetID)});
+            
+            UpdateImplementationStatusConditionalFormatting(ref batchUpdateSpreadsheetRequest, sheetID);
         }
 
-        private static void UpdateStatusConditionalFormatting(ref BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest, int sheetID)
+        private static SetDataValidationRequest GetImplementationStatusValidationRequest(int sheetID)
+        {
+            var statusValidation = new SetDataValidationRequest
+            {
+                Range = new GridRange
+                {
+                    SheetId = sheetID,
+                    StartRowIndex = 1,
+                    StartColumnIndex = 6,
+                    EndColumnIndex = 7
+                },
+                Rule = new DataValidationRule
+                {
+                    Condition = new BooleanCondition
+                    {
+                        Type = "ONE_OF_LIST",
+                        Values = new List<ConditionValue>()
+                    },
+                    Strict = true,
+                    ShowCustomUi = true
+                }
+            };
+
+            // Dynamically fill the condition with values
+            var enumNames = GetStatusEnumNameArray();
+            foreach (var enumValue in enumNames)
+            {
+                statusValidation.Rule.Condition.Values.Add(new ConditionValue {UserEnteredValue = enumValue});
+            }
+
+            return statusValidation;
+        }
+        
+        private static SetDataValidationRequest GetIs3DValidationRequest(int sheetID)
+        {
+            var statusValidation = new SetDataValidationRequest
+            {
+                Range = new GridRange
+                {
+                    SheetId = sheetID,
+                    StartRowIndex = 1,
+                    StartColumnIndex = 1,
+                    EndColumnIndex = 2
+                },
+                Rule = new DataValidationRule
+                {
+                    Condition = new BooleanCondition
+                    {
+                        Type = "ONE_OF_LIST",
+                        Values = new List<ConditionValue>
+                        {
+                            new ConditionValue {UserEnteredValue = "2D"},
+                            new ConditionValue {UserEnteredValue = "3D"},
+                        }
+                    },
+                    Strict = true,
+                    ShowCustomUi = true
+                }
+            };
+
+            return statusValidation;
+        }
+
+        private static SetDataValidationRequest GetIsLoopingValidationRequest(int sheetID)
+        {
+            var statusValidation = new SetDataValidationRequest
+            {
+                Range = new GridRange
+                {
+                    SheetId = sheetID,
+                    StartRowIndex = 1,
+                    StartColumnIndex = 2,
+                    EndColumnIndex = 3
+                },
+                Rule = new DataValidationRule
+                {
+                    Condition = new BooleanCondition
+                    {
+                        Type = "ONE_OF_LIST",
+                        Values = new List<ConditionValue>
+                        {
+                            new ConditionValue {UserEnteredValue = "OneShot"},
+                            new ConditionValue {UserEnteredValue = "Looping"},
+                        }
+                    },
+                    Strict = true,
+                    ShowCustomUi = true
+                }
+            };
+
+            return statusValidation;
+        }
+
+        private static void UpdateImplementationStatusConditionalFormatting(ref BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest, int sheetID)
         {
             batchUpdateSpreadsheetRequest.Requests.Add( new Request
             {
@@ -227,39 +323,6 @@ namespace SoundShout.Editor
             };
         }
         
-        private static SetDataValidationRequest GetStatusValidationRequest(int sheetID)
-        {
-            var statusValidation = new SetDataValidationRequest
-            {
-                Range = new GridRange
-                {
-                    SheetId = sheetID,
-                    StartRowIndex = 1,
-                    StartColumnIndex = 6,
-                    EndColumnIndex = 7
-                },
-                Rule = new DataValidationRule
-                {
-                    Condition = new BooleanCondition
-                    {
-                        Type = "ONE_OF_LIST",
-                        Values = new List<ConditionValue>()
-                    },
-                    Strict = true,
-                    ShowCustomUi = true
-                }
-            };
-
-            // Dynamically fill the condition with values
-            var enumNames = GetStatusEnumNameArray();
-            foreach (var enumValue in enumNames)
-            {
-                statusValidation.Rule.Condition.Values.Add(new ConditionValue {UserEnteredValue = enumValue});
-            }
-
-            return statusValidation;
-        }
-
         private static string[] GetStatusEnumNameArray()
         {
             return Enum.GetNames(typeof(AudioReference.ImplementationStatus));
