@@ -12,10 +12,26 @@ namespace SoundShout.Editor
             DrawDefaultInspector();
 
             AudioReference selectedAudioReference = (AudioReference) target;
+
+            GUILayout.Space(20f);
+            ReadOnlyTextField("Full Event Name", selectedAudioReference.fullEventPath);
             if (GUILayout.Button("Update Event Name"))
             {
                 UpdateEventName(selectedAudioReference);
             }
+        }
+
+        private static GUIStyle readOnlyStyle;
+        private static void ReadOnlyTextField(string label, string text){
+            if (readOnlyStyle == null){
+                readOnlyStyle = new GUIStyle(EditorStyles.textField);
+                readOnlyStyle.normal.textColor = Color.gray;
+            }
+
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField(label, GUILayout.Width(EditorGUIUtility.labelWidth - 4));
+            EditorGUILayout.SelectableLabel(text, readOnlyStyle, GUILayout.Height(EditorGUIUtility.singleLineHeight));
+            EditorGUILayout.EndHorizontal();
         }
 
         internal static void ApplyChanges(AudioReference reference, bool is3DSound, bool shouldLoop, string parameters, string description, string feedback, AudioReference.ImplementationStatus implementationStatus)

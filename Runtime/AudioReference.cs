@@ -3,7 +3,7 @@
 [CreateAssetMenu]
 public class AudioReference : ScriptableObject
 {
-    public string fullEventPath;
+    [HideInInspector] public string fullEventPath;
     public bool is3D;
     public bool looping;
 
