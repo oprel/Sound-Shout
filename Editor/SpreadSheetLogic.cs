@@ -34,12 +34,12 @@ namespace SoundShout.Editor
             return Service.Spreadsheets.Get(spreadSheetUrl).Execute();
         }
 
-        private static List<string> GetSpreadsheetTabsList(Spreadsheet ss)
+        private static List<string> GetSpreadsheetTabsList(Spreadsheet ss, bool includeOverview = false)
         {
             List<string> sheetTabs = new List<string>();
             foreach (Sheet sheet in ss.Sheets)
             {
-                if (sheet.Properties.Title == OVERVIEW_TAB)
+                if (!includeOverview && sheet.Properties.Title == OVERVIEW_TAB)
                 {
                     continue;
                 }
@@ -329,7 +329,7 @@ namespace SoundShout.Editor
                 foreach (var sheet in spreadsheet.Sheets)
                 {
                     string tabTitle = sheet.Properties.Title;
-                    if (tabTitle == "~Overview")
+                    if (tabTitle == OVERVIEW_TAB)
                         continue;
 
                     int sheetID = (int) sheet.Properties.SheetId;
@@ -366,14 +366,14 @@ namespace SoundShout.Editor
         private static bool CreateMissingSheetTabs(string spreadsheetURL, Dictionary<string, int> categories)
         {
             var data = GetSheetData(spreadsheetURL);
-            var existingTabs = GetSpreadsheetTabsList(data);
+            var existingTabs = GetSpreadsheetTabsList(data, true);
 
             BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest = new BatchUpdateSpreadsheetRequest
             {
                 Requests = new List<Request>()
             };
 
-            // Don't duplicate existing tabs
+            
             if (!existingTabs.Contains(OVERVIEW_TAB))
             {
                 batchUpdateSpreadsheetRequest.Requests.Add(new Request
@@ -453,7 +453,7 @@ namespace SoundShout.Editor
             foreach (var sheet in data.Sheets)
             {
                 string tabTitle = sheet.Properties.Title;
-                if (tabTitle == "~Overview")
+                if (tabTitle == OVERVIEW_TAB)
                     continue;
 
                 // ReSharper disable once PossibleInvalidOperationException
