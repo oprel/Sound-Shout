@@ -159,14 +159,15 @@ namespace SoundShout.Editor
                     // Go through each row and their data
                     foreach (var row in values)
                     {
-                        string eventName = $"{sheets[sheetIndex]}/{(string)row[(int)UsedRows.EventName]}";
+                        string eventName = $"{(string)row[(int)UsedRows.EventName]}";
                         bool is3D = (string)row[(int)UsedRows.Is3D] == "3D";
                         bool isLooping = (string)row[(int)UsedRows.Looping] == "Loop";
                         string parameters = (string)row[(int)UsedRows.Parameters];
                         string description = (string)row[(int)UsedRows.Description];
                         string feedback = (string)row[(int)UsedRows.Feedback];
 
-                        AudioReference.ImplementationStatus implementImplementationStatus = (AudioReference.ImplementationStatus)Enum.Parse(typeof(AudioReference.ImplementationStatus), (string)row[(int)UsedRows.ImplementStatus]);
+                        var implementImplementationStatus = 
+                            (AudioReference.ImplementationStatus)Enum.Parse(typeof(AudioReference.ImplementationStatus), (string)row[(int)UsedRows.ImplementStatus]);
 
                         bool newAudioReference = true;
                         string fullEventName = $"event:/{eventName}";
