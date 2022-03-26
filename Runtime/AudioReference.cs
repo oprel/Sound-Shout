@@ -1,5 +1,4 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 
 [CreateAssetMenu]
 public class AudioReference : ScriptableObject
@@ -14,8 +13,8 @@ public class AudioReference : ScriptableObject
     }
 
     #region Editor Spredsheet Things
-    
 #if UNITY_EDITOR
+    
     [Header("Spreadsheet")] 
     [TextArea] public string parameters;
     [TextArea] public string description;
@@ -26,8 +25,7 @@ public class AudioReference : ScriptableObject
     public string eventName;
 
     public enum ImplementationStatus { Delete, TODO, Created, Implemented, Feedback, Iterate, Done };
-
-#endif
     
+#endif
     #endregion
 }
