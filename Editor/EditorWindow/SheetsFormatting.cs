@@ -31,6 +31,7 @@ namespace SoundShout.Editor
                 },
                 Fields = "UserEnteredFormat(BackgroundColor,TextFormat,HorizontalAlignment)"
             };
+            batchUpdateSpreadsheetRequest.Requests.Add(  new Request{UpdateDimensionProperties = headerDimensions(sheetID)} );
             batchUpdateSpreadsheetRequest.Requests.Add( new Request {RepeatCell = repeatCell});
         }
 
@@ -57,24 +58,48 @@ namespace SoundShout.Editor
             return valueRange;
         }
 
+        private static UpdateDimensionPropertiesRequest headerDimensions(int sheetID) =>
+            new UpdateDimensionPropertiesRequest{
+                Range = new DimensionRange
+                {
+                    SheetId = sheetID,
+                    Dimension = "ROWS",
+                    StartIndex = 0,
+                    EndIndex = 1
+
+                },
+                Properties = new DimensionProperties{
+                    PixelSize = 60
+                },
+                Fields = "PixelSize"
+            };
+
         private static CellFormat GetHeaderCellFormat()
         {
             return new CellFormat{
                 BackgroundColor = new Color
                 {
-                    Blue = 1,
-                    Red = 1,
-                    Green = 1,
-                    Alpha = 0
+                    Red = 0.047f,
+                    Blue = 0.204f,
+                    Green = 0.239f,
+                    Alpha = 1
                 },
                 TextFormat = new TextFormat
                 {
-                    Bold = true,
-                    FontSize = 14
+                    FontSize = 12,
+                    
+                    ForegroundColor = new Color
+                    {
+                        Blue = .8f,
+                        Red = .8f,
+                        Green = .9f,
+                        Alpha = 1
+                    }
                 },
-                HorizontalAlignment = "Center"
+                HorizontalAlignment = "Left"
             };
         }
+
         
         private static GridRange GetHeaderGridRange(int sheetId)
         {
