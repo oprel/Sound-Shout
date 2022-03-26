@@ -373,29 +373,24 @@ namespace SoundShout.Editor
                 Requests = new List<Request>()
             };
 
+            // Don't duplicate existing tabs
+            if (!existingTabs.Contains(OVERVIEW_TAB))
+            {
+                batchUpdateSpreadsheetRequest.Requests.Add(new Request
+                {
+                    AddSheet = CreateNewAddOverviewTabRequest()
+                });
+            } 
+            
             foreach (var category in categories)
             {
                 // Don't duplicate existing tabs
                 if (existingTabs.Contains(category.Key))
                     continue;
 
-                var addSheetRequest = new AddSheetRequest
-                {
-                    Properties = new SheetProperties
-                    {
-                        Title = category.Key,
-                        GridProperties = new GridProperties
-                        {
-                            FrozenRowCount = 1,
-                            ColumnCount = 7,
-                            RowCount = 100,
-                        }
-                    }
-                };
-
                 batchUpdateSpreadsheetRequest.Requests.Add(new Request
                 {
-                    AddSheet = addSheetRequest
+                    AddSheet = CreateNewAddTabRequest(category.Key)
                 });
             }
 
@@ -411,6 +406,40 @@ namespace SoundShout.Editor
             return false;
         }
 
+        private static AddSheetRequest CreateNewAddOverviewTabRequest()
+        {
+            return new AddSheetRequest
+            {
+                Properties = new SheetProperties
+                {
+                    Index = 0,
+                    Title = OVERVIEW_TAB,
+                    GridProperties = new GridProperties
+                    {
+                        ColumnCount = 8,
+                        RowCount = 12,
+                    }
+                }
+            };
+        }
+
+        private static AddSheetRequest CreateNewAddTabRequest(string title)
+        {
+            return new AddSheetRequest
+            {
+                Properties = new SheetProperties
+                {
+                    Title = title,
+                    GridProperties = new GridProperties
+                    {
+                        FrozenRowCount = 1,
+                        ColumnCount = 7,
+                        RowCount = 100,
+                    }
+                }
+            };
+        }
+        
         public static void ApplyFormatting(string spreadsheetURL)
         {
             var batchUpdateSpreadsheetRequest = new BatchUpdateSpreadsheetRequest
