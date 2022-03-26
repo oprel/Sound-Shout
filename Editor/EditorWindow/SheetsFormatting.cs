@@ -191,7 +191,7 @@ namespace SoundShout.Editor
                         Values = new List<ConditionValue>
                         {
                             new ConditionValue {UserEnteredValue = "OneShot"},
-                            new ConditionValue {UserEnteredValue = "Looping"},
+                            new ConditionValue {UserEnteredValue = "Loop"},
                         }
                     },
                     Strict = true,
