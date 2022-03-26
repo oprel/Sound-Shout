@@ -16,7 +16,7 @@ namespace SoundShout.Editor
         private const string TOOL_LOGO_PATH = ROOT_TOOL_PATH + "/SS_Tool_Logo.png";
         private const string AUDIO_REFERENCE_ICON_PATH = ROOT_TOOL_PATH + "/SS_Asset_Logo.png";
 
-        private const string MENU_ITEM_CATEGORY = "SWM/Sound Shout/";
+        private const string MENU_ITEM_CATEGORY = "SWM/Sound Shout";
 
         public const string CLIENT_SECRET_PATH = ROOT_TOOL_PATH + "/client_secret.json";
         public const string APPLICATION_NAME = "TOEM";
@@ -32,7 +32,7 @@ namespace SoundShout.Editor
             public string spreadSheetURL;
         }
 
-        [MenuItem(MENU_ITEM_CATEGORY + "Open Tool")]
+        [MenuItem(MENU_ITEM_CATEGORY)]
         public static void OpenWindow()
         {
             SoundShoutWindow wnd = GetWindow<SoundShoutWindow>();
