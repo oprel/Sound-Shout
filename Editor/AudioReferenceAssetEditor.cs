@@ -74,10 +74,10 @@ namespace SoundShout.Editor
                 saveUpdates = true;
             }
 
-            if (reference.implementImplementationStatus != implementationStatus)
+            if (reference.implementationStatus != implementationStatus)
             {
-                changes += $"Status: {reference.implementImplementationStatus}->{implementationStatus} ";
-                reference.implementImplementationStatus = implementationStatus;
+                changes += $"Status: {reference.implementationStatus}->{implementationStatus} ";
+                reference.implementationStatus = implementationStatus;
                 saveUpdates = true;
             }
 
@@ -94,7 +94,7 @@ namespace SoundShout.Editor
             reference.parameters = parameters;
             reference.description = description;
             reference.feedback = feedback;
-            reference.implementImplementationStatus = implementationStatus;
+            reference.implementationStatus = implementationStatus;
         }
 
         internal static void UpdateEventName(AudioReference audioReference)

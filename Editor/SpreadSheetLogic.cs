@@ -290,7 +290,7 @@ namespace SoundShout.Editor
                     audioRef.parameters,
                     audioRef.description,
                     audioRef.feedback,
-                    audioRef.implementImplementationStatus.ToString()
+                    audioRef.implementationStatus.ToString()
                 };
             
                 var valueRange = new ValueRange
