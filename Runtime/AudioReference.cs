@@ -21,8 +21,8 @@ public class AudioReference : ScriptableObject
     [TextArea] public string feedback;
     
     public ImplementationStatus implementImplementationStatus = ImplementationStatus.TODO;
-    public string category;
-    public string eventName;
+    [HideInInspector] public string category;
+    [HideInInspector] public string eventName;
 
     public enum ImplementationStatus { Delete, TODO, Created, Implemented, Feedback, Iterate, Done };
     
