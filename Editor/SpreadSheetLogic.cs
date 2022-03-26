@@ -71,8 +71,8 @@ namespace SoundShout.Editor
             try
             {
                 var data = GetSheetData(spreadSheetURL);
-                var sheetTabs = GetSpreadsheetTabsList(data);
                 var audioRefs = GetAllAudioReferences();
+                var sheetTabs = GetSpreadsheetTabsList(data);
                 ReadEntries(spreadSheetURL, ref audioRefs, ref sheetTabs);
             }
             catch (Exception e)
@@ -147,11 +147,11 @@ namespace SoundShout.Editor
         private static void ReadEntries(string spreadsheetURL, ref AudioReference[] audioReferences, ref List<string> sheets)
         {
             List<AudioReference> newAudioRefsList = new List<AudioReference>(10);
-            for (int sheetIndex = 1; sheetIndex < sheets.Count; sheetIndex++)
+            for (int sheetIndex = 0; sheetIndex < sheets.Count; sheetIndex++)
             {
                 var range = $"{sheets[sheetIndex]}!{STANDARD_RANGE}";
                 var request = Service.Spreadsheets.Values.Get(spreadsheetURL, range);
-
+                
                 ValueRange response = request.Execute();
                 IList<IList<object>> values = response.Values;
                 if (values != null && values.Count > 0)
@@ -174,7 +174,7 @@ namespace SoundShout.Editor
                         {
                             if (audioRef.fullEventPath == fullEventName)
                             {
-                                audioRef.ApplyChanges(is3D, isLooping, parameters, description, feedback, implementImplementationStatus);
+                                AudioReferenceAssetEditor.ApplyChanges(audioRef, is3D, isLooping, parameters, description, feedback, implementImplementationStatus);
                                 newAudioReference = false;
                                 break;
                             }
@@ -233,8 +233,8 @@ namespace SoundShout.Editor
                 }
 
                 AssetDatabase.CreateAsset(newAudioReference, assetPath);
-                newAudioReference.SetupVariables(is3D, isLooping, parameters, description, feedback, implementImplementationStatus);
-                newAudioReference.UpdateEventName();
+                AudioReferenceAssetEditor.SetupVariables(newAudioReference, is3D, isLooping, parameters, description, feedback, implementImplementationStatus);
+                AudioReferenceAssetEditor.UpdateEventName(newAudioReference);
 
                 Debug.Log($"<color=cyan>Created new AudioReference: \"{eventName}\"</color>");
                 return newAudioReference;
@@ -256,7 +256,7 @@ namespace SoundShout.Editor
             {
                 var audioReference = AssetDatabase.LoadAssetAtPath<AudioReference>(AssetDatabase.GUIDToAssetPath(audioReferences[i]));
                 audioReferencesArray[i] = audioReference;
-                audioReference.UpdateEventName();
+                AudioReferenceAssetEditor.UpdateEventName(audioReference);
             }
 
             return audioReferencesArray;
