@@ -16,6 +16,8 @@ namespace SoundShout.Editor
 {
     public static class SpreadSheetLogic
     {
+        private const string APPLICATION_NAME = "TOEM";
+        
         private static SheetsService service;
         private static SheetsService Service => service ?? (service = GetSheetsService());
 
@@ -53,7 +55,7 @@ namespace SoundShout.Editor
         private static SheetsService GetSheetsService()
         {
             GoogleCredential credential;
-            const string secretsPath = SoundShoutWindow.CLIENT_SECRET_PATH;
+            const string secretsPath = SoundShoutSettings.CLIENT_SECRET_PATH;
             using (var stream = new FileStream(secretsPath, FileMode.Open, FileAccess.Read))
             {
                 credential = GoogleCredential.FromStream(stream).CreateScoped(scopes);
@@ -62,7 +64,7 @@ namespace SoundShout.Editor
             return new SheetsService(new BaseClientService.Initializer
             {
                 HttpClientInitializer = credential,
-                ApplicationName = SoundShoutWindow.APPLICATION_NAME,
+                ApplicationName = APPLICATION_NAME,
             });
         }
 

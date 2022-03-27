@@ -11,27 +11,15 @@ namespace SoundShout.Editor
 {
     public class SoundShoutWindow : EditorWindow
     {
-        private const string TOOL_PATH = SoundShoutSettings.ROOT_PATH + "/Editor/EditorWindow";
-        private const string SETTINGS_PATH = TOOL_PATH + "/Settings.txt";
-        private const string TOOL_LOGO_PATH = TOOL_PATH + "/SS_Tool_Logo.png";
-        private const string AUDIO_REFERENCE_ICON_PATH = TOOL_PATH + "/SS_Asset_Logo.png";
-
+        private static string SpreedSheetURL => SoundShoutSettings.GetSettingsSO.spreadsheetURL;
+        
+        private const string TOOL_LOGO_PATH = SoundShoutSettings.TOOL_PATH + "/SS_Tool_Logo.png";
+        private const string AUDIO_REFERENCE_ICON_PATH = SoundShoutSettings.TOOL_PATH + "/SS_Asset_Logo.png";
         private const string MENU_ITEM_CATEGORY = "SWM/Sound Shout";
 
-        public const string CLIENT_SECRET_PATH = TOOL_PATH + "/client_secret.json";
-        public const string APPLICATION_NAME = "TOEM";
-
         private static TextField spreadsheetURLTextField;
-        
-        private static bool IsClientSecretsFileAvailable() { return File.Exists(CLIENT_SECRET_PATH); }
-
         private const int MIN_SIZE = 256;
         
-        private class ExporterSettings
-        {
-            public string spreadSheetURL;
-        }
-
         [MenuItem(MENU_ITEM_CATEGORY)]
         public static void OpenWindow()
         {
@@ -78,7 +66,7 @@ namespace SoundShout.Editor
         {
             Foldout setupFoldout = new Foldout
             {
-                text = IsClientSecretsFileAvailable() ? "Initial Setup ✓" : "Initial Setup",
+                text = SoundShoutSettings.IsClientSecretsFileAvailable() ? "Initial Setup ✓" : "Initial Setup",
                 style = { backgroundColor = new StyleColor(Color.black)}
             };
 
@@ -93,8 +81,6 @@ namespace SoundShout.Editor
             spreadsheetURLTextField = Utilities.CreateTextField("Spreadsheet URL");
             setupFoldout.Add(spreadsheetURLTextField);
 
-            setupFoldout.Add(Utilities.CreateButton("Save Settings", SaveSettings));
-
             return setupFoldout;
         }
 
@@ -105,24 +91,24 @@ namespace SoundShout.Editor
                 text = "Export/Import",
             };
 
-            if (!IsClientSecretsFileAvailable())
+            if (!SoundShoutSettings.IsClientSecretsFileAvailable())
             {
                 setupFoldout.Add(Utilities.CreateLabel("Please finish the setup!"));
             }
             else
             {
                 setupFoldout.Add(Utilities.CreateButton("Open Spreadsheet", OpenGoogleSheetData));
-                setupFoldout.Add(Utilities.CreateButton("Update Spreadsheet", () => { SpreadSheetLogic.UpdateAudioSpreadSheet(LoadSettings().spreadSheetURL); }));
-                setupFoldout.Add(Utilities.CreateButton("Fetch Spreadsheet Changes", () => { SpreadSheetLogic.FetchSpreadsheetChanges(LoadSettings().spreadSheetURL); }));
-                setupFoldout.Add(Utilities.CreateButton("Apply Formatting", () => { SpreadSheetLogic.ApplyFormatting(LoadSettings().spreadSheetURL); }));
-                // setupFoldout.Add(Utilities.CreateButton("Upload Local Changes", () => { SpreadSheetLogic.UploadLocalChanges(LoadSettings().spreadSheetURL); }));
+                setupFoldout.Add(Utilities.CreateButton("Update Spreadsheet", () => { SpreadSheetLogic.UpdateAudioSpreadSheet(SpreedSheetURL); }));
+                setupFoldout.Add(Utilities.CreateButton("Fetch Spreadsheet Changes", () => { SpreadSheetLogic.FetchSpreadsheetChanges(SpreedSheetURL); }));
+                setupFoldout.Add(Utilities.CreateButton("Apply Formatting", () => { SpreadSheetLogic.ApplyFormatting(SpreedSheetURL); }));
+                // setupFoldout.Add(Utilities.CreateButton("Upload Local Changes", () => { SpreadSheetLogic.UploadLocalChanges(SpreedSheetURL); }));
             }
             
             return setupFoldout;
         }
 
         
-        private static void OpenGoogleSheetData() { Process.Start($"https://docs.google.com/spreadsheets/d/{LoadSettings().spreadSheetURL}"); }
+        private static void OpenGoogleSheetData() { Process.Start($"https://docs.google.com/spreadsheets/d/{SpreedSheetURL}"); }
         
         private static void AddNewToolbarButton(Toolbar toolbar, string text, Action onClicked)
         {
@@ -130,49 +116,23 @@ namespace SoundShout.Editor
             toolbar.Add(button);
         }
         
-        
-        
-        private void SetupValues()
+        private static void SetupValues()
         {
-            var settings = LoadSettings();
+            var settings = SoundShoutSettings.GetSettingsSO;
             if (settings != null)
             {
-                spreadsheetURLTextField.value = settings.spreadSheetURL;
+                spreadsheetURLTextField.value = settings.spreadsheetURL;
             }
-        }
-
-        private static ExporterSettings LoadSettings()
-        {
-            if (File.Exists(SETTINGS_PATH))
-            {
-                var content = File.ReadAllText(SETTINGS_PATH);
-                var settings = JsonUtility.FromJson<ExporterSettings>(content);
-                return settings;
-            }
-
-            return null;
-        }
-
-        private static void SaveSettings()
-        {
-            ExporterSettings exporterSettings = new ExporterSettings
-            {
-                spreadSheetURL = spreadsheetURLTextField.value
-            };
-            var content = JsonUtility.ToJson(exporterSettings, true);
-
-            File.WriteAllText(SETTINGS_PATH, content);
-            Debug.Log("Saved settings");
         }
 
         private static VisualElement CreateLocateClientSecretButton()
         {
             var browseButton = Utilities.CreateButton("Locate \"client_secrets.json\"", () =>
             {
-                string path = EditorUtility.OpenFilePanel("Select client_secrets.json file", TOOL_PATH, "json");
+                string path = EditorUtility.OpenFilePanel("Select client_secrets.json file", SoundShoutSettings.TOOL_PATH, "json");
                 if (path.Length != 0)
                 {
-                    File.WriteAllText(CLIENT_SECRET_PATH, File.ReadAllText(path));
+                    File.WriteAllText(SoundShoutSettings.CLIENT_SECRET_PATH, File.ReadAllText(path));
                 }
             });
 

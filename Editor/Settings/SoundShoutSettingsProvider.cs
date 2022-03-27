@@ -7,7 +7,7 @@ namespace SoundShout.Editor
     internal static class SoundShoutSettingsProvider
     {
         [SettingsProvider]
-        public static SettingsProvider CreateSoundShoutSettingsProvider()
+        private static SettingsProvider CreateSoundShoutSettingsProvider()
         {
             var provider = new SettingsProvider("Project/Sound Shout Settings", SettingsScope.Project)
             {
