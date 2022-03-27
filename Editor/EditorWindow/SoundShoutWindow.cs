@@ -12,11 +12,7 @@ namespace SoundShout.Editor
     public class SoundShoutWindow : EditorWindow
     {
         private static string SpreedSheetURL => SoundShoutSettings.GetSettings.spreadsheetURL;
-        
-        private const string TOOL_LOGO_PATH = SoundShoutSettings.TOOL_PATH + "/SS_Tool_Logo.png";
-        private const string AUDIO_REFERENCE_ICON_PATH = SoundShoutSettings.TOOL_PATH + "/SS_Asset_Logo.png";
         private const string MENU_ITEM_CATEGORY = "SWM/Sound Shout";
-
         private const int MIN_SIZE = 256;
         
         [MenuItem(MENU_ITEM_CATEGORY)]
@@ -25,7 +21,7 @@ namespace SoundShout.Editor
             SoundShoutWindow wnd = GetWindow<SoundShoutWindow>();
             wnd.titleContent = new GUIContent("Sound Shout")
             {
-                image = AssetDatabase.LoadAssetAtPath<Texture>(AUDIO_REFERENCE_ICON_PATH),
+                image = AssetDatabase.LoadAssetAtPath<Texture>(SoundShoutPaths.AUDIO_REFERENCE_ICON_PATH),
             };
             wnd.minSize = new Vector2(MIN_SIZE, MIN_SIZE);
         }
@@ -51,7 +47,7 @@ namespace SoundShout.Editor
                 }
             };
 
-            Image soundShoutLogo = Utilities.CreateImage(TOOL_LOGO_PATH);
+            Image soundShoutLogo = Utilities.CreateImage(SoundShoutPaths.TOOL_LOGO_PATH);
             soundShoutLogo.scaleMode = ScaleMode.ScaleToFit;
             
             titleContainer.Add(soundShoutLogo);
@@ -117,10 +113,10 @@ namespace SoundShout.Editor
         {
             var browseButton = Utilities.CreateButton("Locate \"client_secrets.json\"", () =>
             {
-                string path = EditorUtility.OpenFilePanel("Select client_secrets.json file", SoundShoutSettings.TOOL_PATH, "json");
+                string path = EditorUtility.OpenFilePanel("Select client_secrets.json file", SoundShoutPaths.TOOL_PATH, "json");
                 if (path.Length != 0)
                 {
-                    File.WriteAllText(SoundShoutSettings.CLIENT_SECRET_PATH, File.ReadAllText(path));
+                    File.WriteAllText(SoundShoutPaths.CLIENT_SECRET_PATH, File.ReadAllText(path));
                 }
             });
 

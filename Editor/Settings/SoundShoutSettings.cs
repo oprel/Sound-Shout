@@ -8,9 +8,6 @@ namespace SoundShout.Editor
 {
     internal class SoundShoutSettings : ScriptableObject
     {
-        private const string ROOT_PATH = "Packages/se.somethingwemade.soundshout/";
-        private const string SETTINGS_ASSET_PATH = ROOT_PATH + "Editor/Settings/Sound Shout Settings.asset";
-
         internal static SoundShoutSettings GetSettings => GetOrCreateSettings();
 
         
@@ -23,9 +20,7 @@ namespace SoundShout.Editor
             public Color color;
         }
 
-        internal const string CLIENT_SECRET_PATH = TOOL_PATH + "/client_secret.json";
-        internal const string TOOL_PATH = ROOT_PATH + "/Editor/EditorWindow";
-        internal static bool IsClientSecretsFileAvailable() { return File.Exists(CLIENT_SECRET_PATH); }
+        internal static bool IsClientSecretsFileAvailable() { return File.Exists(SoundShoutPaths.CLIENT_SECRET_PATH); }
 
         internal static void SelectAsset()
         {
@@ -34,11 +29,11 @@ namespace SoundShout.Editor
         
         private static SoundShoutSettings GetOrCreateSettings()
         {
-            var settings = AssetDatabase.LoadAssetAtPath<SoundShoutSettings>(SETTINGS_ASSET_PATH);
+            var settings = AssetDatabase.LoadAssetAtPath<SoundShoutSettings>(SoundShoutPaths.SETTINGS_ASSET_PATH);
             if (settings == null)
             {
                 settings = CreateInstance<SoundShoutSettings>();
-                AssetDatabase.CreateAsset(settings, SETTINGS_ASSET_PATH);
+                AssetDatabase.CreateAsset(settings, SoundShoutPaths.SETTINGS_ASSET_PATH);
                 AssetDatabase.SaveAssets();
             }
 

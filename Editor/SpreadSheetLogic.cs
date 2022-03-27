@@ -53,7 +53,7 @@ namespace SoundShout.Editor
         private static SheetsService GetSheetsService()
         {
             GoogleCredential credential;
-            const string secretsPath = SoundShoutSettings.CLIENT_SECRET_PATH;
+            const string secretsPath = SoundShoutPaths.CLIENT_SECRET_PATH;
             using (var stream = new FileStream(secretsPath, FileMode.Open, FileAccess.Read))
             {
                 credential = GoogleCredential.FromStream(stream).CreateScoped(scopes);
