@@ -11,13 +11,12 @@ namespace SoundShout.Editor
 {
     public class SoundShoutWindow : EditorWindow
     {
-        private static string SpreedSheetURL => SoundShoutSettings.GetSettingsSO.spreadsheetURL;
+        private static string SpreedSheetURL => SoundShoutSettings.GetSettings.spreadsheetURL;
         
         private const string TOOL_LOGO_PATH = SoundShoutSettings.TOOL_PATH + "/SS_Tool_Logo.png";
         private const string AUDIO_REFERENCE_ICON_PATH = SoundShoutSettings.TOOL_PATH + "/SS_Asset_Logo.png";
         private const string MENU_ITEM_CATEGORY = "SWM/Sound Shout";
 
-        private static TextField spreadsheetURLTextField;
         private const int MIN_SIZE = 256;
         
         [MenuItem(MENU_ITEM_CATEGORY)]
@@ -40,8 +39,6 @@ namespace SoundShout.Editor
             
             rootContainer.Add(CreateSetupTools());
             rootContainer.Add(CreateUsageTools());
-
-            SetupValues();
         }
 
         public static VisualElement CreateToolTitleVisualElement()
@@ -78,9 +75,9 @@ namespace SoundShout.Editor
 
             setupFoldout.Add(CreateLocateClientSecretButton());
 
-            spreadsheetURLTextField = Utilities.CreateTextField("Spreadsheet URL");
-            setupFoldout.Add(spreadsheetURLTextField);
-
+            var selectSettingsButton = Utilities.CreateButton("Tweak Settings", SoundShoutSettings.SelectAsset);
+            setupFoldout.Add(selectSettingsButton);
+            
             return setupFoldout;
         }
 
@@ -116,15 +113,6 @@ namespace SoundShout.Editor
             toolbar.Add(button);
         }
         
-        private static void SetupValues()
-        {
-            var settings = SoundShoutSettings.GetSettingsSO;
-            if (settings != null)
-            {
-                spreadsheetURLTextField.value = settings.spreadsheetURL;
-            }
-        }
-
         private static VisualElement CreateLocateClientSecretButton()
         {
             var browseButton = Utilities.CreateButton("Locate \"client_secrets.json\"", () =>
