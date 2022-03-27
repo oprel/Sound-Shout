@@ -29,8 +29,6 @@ namespace SoundShout.Editor
         private const string END_RANGE = "G";
         private const string STANDARD_RANGE = START_RANGE + ":" + END_RANGE;
         
-        private static int totalOperations, currentOperation;
-
         private static Spreadsheet GetSheetData(string spreadSheetUrl)
         {
             return Service.Spreadsheets.Get(spreadSheetUrl).Execute();
@@ -95,23 +93,13 @@ namespace SoundShout.Editor
         {
             try
             {
-                // Progress bar
-                totalOperations = 5; // Number of methods, used to calculate percentage for 
-
-                currentOperation = 0;
                 var audioRefs = GetAllAudioReferences();
 
-                currentOperation++;
                 FetchSpreadsheetChanges(spreadSheetURL);
 
-                currentOperation++;
                 ClearAllSheetsRequest(spreadSheetURL);
 
-                currentOperation++;
                 UploadLocalAudioReferenceChanges(spreadSheetURL, ref audioRefs);
-
-                currentOperation++;
-                UpdateProgressBar("Cleaning up", 1);
 
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
@@ -125,11 +113,6 @@ namespace SoundShout.Editor
                 Console.WriteLine(e);
                 throw;
             }
-        }
-
-        private static void UpdateProgressBar(string message, float progress)
-        {
-            EditorUtility.DisplayProgressBar("Updating AudioReferences", message, (progress + currentOperation) / totalOperations);
         }
 
         private static List<string> GetAudioReferenceCategories(IReadOnlyList<AudioReference> audioReferences)
