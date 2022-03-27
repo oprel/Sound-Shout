@@ -11,14 +11,14 @@ namespace SoundShout.Editor
 {
     public class SoundShoutWindow : EditorWindow
     {
-        private const string ROOT_TOOL_PATH = "Packages/se.somethingwemade.soundshout/Editor/EditorWindow";
-        private const string SETTINGS_PATH = ROOT_TOOL_PATH + "/Settings.txt";
-        private const string TOOL_LOGO_PATH = ROOT_TOOL_PATH + "/SS_Tool_Logo.png";
-        private const string AUDIO_REFERENCE_ICON_PATH = ROOT_TOOL_PATH + "/SS_Asset_Logo.png";
+        private const string TOOL_PATH = SoundShoutSettings.ROOT_PATH + "/Editor/EditorWindow";
+        private const string SETTINGS_PATH = TOOL_PATH + "/Settings.txt";
+        private const string TOOL_LOGO_PATH = TOOL_PATH + "/SS_Tool_Logo.png";
+        private const string AUDIO_REFERENCE_ICON_PATH = TOOL_PATH + "/SS_Asset_Logo.png";
 
         private const string MENU_ITEM_CATEGORY = "SWM/Sound Shout";
 
-        public const string CLIENT_SECRET_PATH = ROOT_TOOL_PATH + "/client_secret.json";
+        public const string CLIENT_SECRET_PATH = TOOL_PATH + "/client_secret.json";
         public const string APPLICATION_NAME = "TOEM";
 
         private static TextField spreadsheetURLTextField;
@@ -56,7 +56,7 @@ namespace SoundShout.Editor
             SetupValues();
         }
 
-        private static VisualElement CreateToolTitleVisualElement()
+        public static VisualElement CreateToolTitleVisualElement()
         {
             VisualElement titleContainer = new VisualElement
             {
@@ -169,7 +169,7 @@ namespace SoundShout.Editor
         {
             var browseButton = Utilities.CreateButton("Locate \"client_secrets.json\"", () =>
             {
-                string path = EditorUtility.OpenFilePanel("Select client_secrets.json file", ROOT_TOOL_PATH, "json");
+                string path = EditorUtility.OpenFilePanel("Select client_secrets.json file", TOOL_PATH, "json");
                 if (path.Length != 0)
                 {
                     File.WriteAllText(CLIENT_SECRET_PATH, File.ReadAllText(path));
