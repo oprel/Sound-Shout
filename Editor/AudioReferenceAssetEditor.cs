@@ -12,10 +12,26 @@ namespace SoundShout.Editor
             DrawDefaultInspector();
 
             AudioReference selectedAudioReference = (AudioReference) target;
+
+            GUILayout.Space(20f);
+            ReadOnlyTextField("Full Event Name", selectedAudioReference.fullEventPath);
             if (GUILayout.Button("Update Event Name"))
             {
                 UpdateEventName(selectedAudioReference);
             }
+        }
+
+        private static GUIStyle readOnlyStyle;
+        private static void ReadOnlyTextField(string label, string text){
+            if (readOnlyStyle == null){
+                readOnlyStyle = new GUIStyle(EditorStyles.textField);
+                readOnlyStyle.normal.textColor = Color.gray;
+            }
+
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField(label, GUILayout.Width(EditorGUIUtility.labelWidth - 4));
+            EditorGUILayout.SelectableLabel(text, readOnlyStyle, GUILayout.Height(EditorGUIUtility.singleLineHeight));
+            EditorGUILayout.EndHorizontal();
         }
 
         internal static void ApplyChanges(AudioReference reference, bool is3DSound, bool shouldLoop, string parameters, string description, string feedback, AudioReference.ImplementationStatus implementationStatus)
@@ -58,10 +74,10 @@ namespace SoundShout.Editor
                 saveUpdates = true;
             }
 
-            if (reference.implementImplementationStatus != implementationStatus)
+            if (reference.implementationStatus != implementationStatus)
             {
-                changes += $"Status: {reference.implementImplementationStatus}->{implementationStatus} ";
-                reference.implementImplementationStatus = implementationStatus;
+                changes += $"Status: {reference.implementationStatus}->{implementationStatus} ";
+                reference.implementationStatus = implementationStatus;
                 saveUpdates = true;
             }
 
@@ -78,7 +94,7 @@ namespace SoundShout.Editor
             reference.parameters = parameters;
             reference.description = description;
             reference.feedback = feedback;
-            reference.implementImplementationStatus = implementationStatus;
+            reference.implementationStatus = implementationStatus;
         }
 
         internal static void UpdateEventName(AudioReference audioReference)

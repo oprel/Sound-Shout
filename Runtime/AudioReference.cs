@@ -3,7 +3,7 @@
 [CreateAssetMenu]
 public class AudioReference : ScriptableObject
 {
-    public string fullEventPath;
+    [HideInInspector] public string fullEventPath;
     public bool is3D;
     public bool looping;
 
@@ -12,7 +12,7 @@ public class AudioReference : ScriptableObject
         return fullEventPath;
     }
 
-    #region Editor Spredsheet Things
+    #region Editor Spreadsheet Things
 #if UNITY_EDITOR
     
     [Header("Spreadsheet")] 
@@ -20,7 +20,7 @@ public class AudioReference : ScriptableObject
     [TextArea] public string description;
     [TextArea] public string feedback;
     
-    public ImplementationStatus implementImplementationStatus = ImplementationStatus.TODO;
+    public ImplementationStatus implementationStatus = ImplementationStatus.TODO;
     [HideInInspector] public string category;
     [HideInInspector] public string eventName;
 
