@@ -65,14 +65,6 @@ namespace SoundShout.Editor
 
         internal static void OpenSpreadSheetInBrowser() => System.Diagnostics.Process.Start($"https://docs.google.com/spreadsheets/d/{SpreedSheetURL}");
 
-        internal static void FetchSpreadsheetChanges()
-        {
-            var data = GetSheetData(SpreedSheetURL);
-            var audioRefs = AssetUtilities.GetAllAudioReferences();
-            var sheetTabs = GetSpreadsheetTabsList(data);
-            ReadEntries(ref audioRefs, ref sheetTabs);
-        }
-
         internal static void UpdateAudioSpreadSheet()
         {
             var audioRefs = AssetUtilities.GetAllAudioReferences();
@@ -84,6 +76,14 @@ namespace SoundShout.Editor
             UploadLocalAudioReferenceChanges(ref audioRefs);
 
             Debug.Log("AudioReferenceExporter: All AudioReference is up-to-date");
+        }
+        
+        internal static void FetchSpreadsheetChanges()
+        {
+            var data = GetSheetData(SpreedSheetURL);
+            var audioRefs = AssetUtilities.GetAllAudioReferences();
+            var sheetTabs = GetSpreadsheetTabsList(data);
+            ReadEntries(ref audioRefs, ref sheetTabs);
         }
 
         private static void ReadEntries(ref AudioReference[] audioReferences, ref List<string> sheets)
@@ -221,6 +221,7 @@ namespace SoundShout.Editor
                     if (tabTitle == OVERVIEW_TAB)
                         continue;
 
+                    // ReSharper disable once PossibleInvalidOperationException
                     int sheetID = (int) sheet.Properties.SheetId;
                     SheetsFormatting.AddEmptyConditionalFormattingRequests(ref batchUpdateSpreadsheetRequest, sheetID);
                 }
