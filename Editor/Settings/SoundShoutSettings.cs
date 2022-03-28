@@ -8,9 +8,6 @@ namespace SoundShout.Editor
 {
     internal class SoundShoutSettings : ScriptableObject
     {
-        internal static SoundShoutSettings GetSettings => GetOrCreateSettings();
-
-        
         [SerializeField] public string spreadsheetURL;
         
         [SerializeField] internal List<ColorScheme> colorSchemes;
@@ -20,12 +17,7 @@ namespace SoundShout.Editor
             public Color color;
         }
 
-        internal static bool IsClientSecretsFileAvailable() { return File.Exists(SoundShoutPaths.CLIENT_SECRET_PATH); }
-
-        internal static void SelectAsset()
-        {
-            Selection.SetActiveObjectWithContext(GetSettings, null);
-        }
+        internal static SoundShoutSettings Settings => GetOrCreateSettings();
         
         private static SoundShoutSettings GetOrCreateSettings()
         {
@@ -40,9 +32,10 @@ namespace SoundShout.Editor
             return settings;
         }
 
-        internal static SerializedObject GetSerializedSettings()
-        {
-            return new SerializedObject(GetOrCreateSettings());
-        }
+        internal static SerializedObject GetSerializedSettings() { return new SerializedObject(GetOrCreateSettings()); }
+        
+        internal static bool IsClientSecretsFileAvailable() { return File.Exists(SoundShoutPaths.CLIENT_SECRET_PATH); }
+        internal static void SelectAsset() { Selection.SetActiveObjectWithContext(Settings, null); }
+
     }
 }

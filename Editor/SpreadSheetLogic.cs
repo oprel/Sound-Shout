@@ -17,7 +17,8 @@ namespace SoundShout.Editor
     public static class SpreadSheetLogic
     {
         private const string APPLICATION_NAME = "TOEM";
-        
+        private static string SpreedSheetURL => SoundShoutSettings.Settings.spreadsheetURL;
+
         private static SheetsService service;
         private static SheetsService Service => service ?? (service = GetSheetsService());
 
@@ -49,6 +50,11 @@ namespace SoundShout.Editor
 
             return sheetTabs;
         }
+
+        internal static void OpenSpreadSheet()
+        {
+            System.Diagnostics.Process.Start($"https://docs.google.com/spreadsheets/d/{SpreedSheetURL}");
+        }
         
         private static SheetsService GetSheetsService()
         {
@@ -66,14 +72,14 @@ namespace SoundShout.Editor
             });
         }
 
-        public static void FetchSpreadsheetChanges(string spreadSheetURL)
+        public static void FetchSpreadsheetChanges()
         {
             try
             {
-                var data = GetSheetData(spreadSheetURL);
+                var data = GetSheetData(SpreedSheetURL);
                 var audioRefs = GetAllAudioReferences();
                 var sheetTabs = GetSpreadsheetTabsList(data);
-                ReadEntries(spreadSheetURL, ref audioRefs, ref sheetTabs);
+                ReadEntries(ref audioRefs, ref sheetTabs);
             }
             catch (Exception e)
             {
@@ -83,23 +89,17 @@ namespace SoundShout.Editor
             }
         }
 
-        public static void UploadLocalChanges(string spreadSheetURL)
-        {
-            var allAudioReferences = GetAllAudioReferences();
-            UploadLocalAudioReferenceChanges(spreadSheetURL, ref allAudioReferences);
-        }
-
-        public static void UpdateAudioSpreadSheet(string spreadSheetURL)
+        public static void UpdateAudioSpreadSheet()
         {
             try
             {
                 var audioRefs = GetAllAudioReferences();
 
-                FetchSpreadsheetChanges(spreadSheetURL);
+                FetchSpreadsheetChanges();
 
-                ClearAllSheetsRequest(spreadSheetURL);
+                ClearAllSheetsRequest();
 
-                UploadLocalAudioReferenceChanges(spreadSheetURL, ref audioRefs);
+                UploadLocalAudioReferenceChanges(ref audioRefs);
 
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
@@ -129,13 +129,13 @@ namespace SoundShout.Editor
             return tabCategories;
         }
 
-        private static void ReadEntries(string spreadsheetURL, ref AudioReference[] audioReferences, ref List<string> sheets)
+        private static void ReadEntries(ref AudioReference[] audioReferences, ref List<string> sheets)
         {
             List<AudioReference> newAudioRefsList = new List<AudioReference>(10);
             for (int sheetIndex = 0; sheetIndex < sheets.Count; sheetIndex++)
             {
                 var range = $"{sheets[sheetIndex]}!{STANDARD_RANGE}";
-                var request = Service.Spreadsheets.Values.Get(spreadsheetURL, range);
+                var request = Service.Spreadsheets.Values.Get(SpreedSheetURL, range);
                 
                 ValueRange response = request.Execute();
                 IList<IList<object>> values = response.Values;
@@ -248,7 +248,7 @@ namespace SoundShout.Editor
             return audioReferencesArray;
         }
 
-        private static void UploadLocalAudioReferenceChanges(string spreadsheetURL, ref AudioReference[] audioReferences)
+        private static void UploadLocalAudioReferenceChanges(ref AudioReference[] audioReferences)
         {
             Dictionary<string, int> categories = new Dictionary<string, int>();
             
@@ -296,16 +296,16 @@ namespace SoundShout.Editor
             
             data.Add(updateText);
 
-            bool hasCreatedNewTabs = CreateMissingSheetTabs(spreadsheetURL, categories);
+            bool hasCreatedNewTabs = CreateMissingSheetTabs(SpreedSheetURL, categories);
 
             BatchUpdateValuesRequest requestBody = new BatchUpdateValuesRequest { ValueInputOption = "USER_ENTERED", Data = data };
             
-            SpreadsheetsResource.ValuesResource.BatchUpdateRequest request = Service.Spreadsheets.Values.BatchUpdate(requestBody, spreadsheetURL);
+            SpreadsheetsResource.ValuesResource.BatchUpdateRequest request = Service.Spreadsheets.Values.BatchUpdate(requestBody, SpreedSheetURL);
             request.Execute();
 
             if (hasCreatedNewTabs)
             {
-                var spreadsheet = GetSheetData(spreadsheetURL);
+                var spreadsheet = GetSheetData(SpreedSheetURL);
                 var batchUpdateSpreadsheetRequest = new BatchUpdateSpreadsheetRequest
                 {
                     Requests = new List<Request>()
@@ -321,20 +321,20 @@ namespace SoundShout.Editor
                     SheetsFormatting.AddEmptyConditionalFormattingRequests(ref batchUpdateSpreadsheetRequest, sheetID);
                 }
                 
-                var batchUpdateRequest = Service.Spreadsheets.BatchUpdate(batchUpdateSpreadsheetRequest, spreadsheetURL); 
+                var batchUpdateRequest = Service.Spreadsheets.BatchUpdate(batchUpdateSpreadsheetRequest, SpreedSheetURL); 
                 batchUpdateRequest.Execute();
             }
             
-            ApplyFormatting(spreadsheetURL);
+            ApplyFormattingToSpreadSheet();
             
 #if DEBUGGING
         Debug.Log($"Added {audioReferences.Length} audio refs: {JsonConvert.SerializeObject(requestBody)}");
 #endif
         }
 
-        private static void ClearAllSheetsRequest(string spreadsheetUrl)
+        private static void ClearAllSheetsRequest()
         {
-            var data = GetSheetData(spreadsheetUrl);
+            var data = GetSheetData(SpreedSheetURL);
             var sheets = GetSpreadsheetTabsList(data);
             List<string> ranges = new List<string>();
             foreach (var sheetTab in sheets)
@@ -344,7 +344,7 @@ namespace SoundShout.Editor
 
             BatchClearValuesRequest requestBody = new BatchClearValuesRequest { Ranges = ranges };
 
-            SpreadsheetsResource.ValuesResource.BatchClearRequest request = Service.Spreadsheets.Values.BatchClear(requestBody, spreadsheetUrl);
+            SpreadsheetsResource.ValuesResource.BatchClearRequest request = Service.Spreadsheets.Values.BatchClear(requestBody, SpreedSheetURL);
             request.Execute();
         }
 
@@ -425,14 +425,14 @@ namespace SoundShout.Editor
             };
         }
         
-        public static void ApplyFormatting(string spreadsheetURL)
+        public static void ApplyFormattingToSpreadSheet()
         {
             var batchUpdateSpreadsheetRequest = new BatchUpdateSpreadsheetRequest
             {
                 Requests = new List<Request>()
             };
 
-            var data = GetSheetData(spreadsheetURL);
+            var data = GetSheetData(SpreedSheetURL);
             var headerTextValueRanges = new List<ValueRange>();
 
             foreach (var sheet in data.Sheets)
@@ -452,7 +452,7 @@ namespace SoundShout.Editor
             // Apply formatting
             if (batchUpdateSpreadsheetRequest.Requests.Count > 0)
             {
-                var batchUpdateRequest = Service.Spreadsheets.BatchUpdate(batchUpdateSpreadsheetRequest, spreadsheetURL); 
+                var batchUpdateRequest = Service.Spreadsheets.BatchUpdate(batchUpdateSpreadsheetRequest, SpreedSheetURL); 
                 batchUpdateRequest.Execute();
             }
 
@@ -460,7 +460,7 @@ namespace SoundShout.Editor
             if (headerTextValueRanges.Count > 0)
             {
                 BatchUpdateValuesRequest requestBody = new BatchUpdateValuesRequest { ValueInputOption = "USER_ENTERED", Data = headerTextValueRanges };
-                SpreadsheetsResource.ValuesResource.BatchUpdateRequest request = Service.Spreadsheets.Values.BatchUpdate(requestBody, spreadsheetURL);
+                SpreadsheetsResource.ValuesResource.BatchUpdateRequest request = Service.Spreadsheets.Values.BatchUpdate(requestBody, SpreedSheetURL);
                 request.Execute();
             }
         }

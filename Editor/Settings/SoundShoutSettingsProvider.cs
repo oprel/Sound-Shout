@@ -16,7 +16,7 @@ namespace SoundShout.Editor
                 {
                     var settings = SoundShoutSettings.GetSerializedSettings();
 
-                    rootElement.Add(SoundShoutWindow.CreateToolTitleVisualElement());
+                    rootElement.Add(SoundShoutWindow.GenerateToolTitleVisualElement());
 
                     rootElement.Add(Utilities.CreateLabel("Spreadsheet URL")); 
                     

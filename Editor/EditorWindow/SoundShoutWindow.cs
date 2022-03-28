@@ -1,21 +1,16 @@
-using System;
 using System.Diagnostics;
 using System.IO;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
-using Debug = UnityEngine.Debug;
 
 namespace SoundShout.Editor
 {
     public class SoundShoutWindow : EditorWindow
     {
-        private static string SpreedSheetURL => SoundShoutSettings.GetSettings.spreadsheetURL;
-        private const string MENU_ITEM_CATEGORY = "SWM/Sound Shout";
-        private const int MIN_SIZE = 256;
+        private const int MIN_ELEMENT_SIZE = 256;
         
-        [MenuItem(MENU_ITEM_CATEGORY)]
+        [MenuItem("SWM/Sound Shout")]
         public static void OpenWindow()
         {
             SoundShoutWindow wnd = GetWindow<SoundShoutWindow>();
@@ -23,27 +18,27 @@ namespace SoundShout.Editor
             {
                 image = AssetDatabase.LoadAssetAtPath<Texture>(SoundShoutPaths.AUDIO_REFERENCE_ICON_PATH),
             };
-            wnd.minSize = new Vector2(MIN_SIZE, MIN_SIZE);
+            wnd.minSize = new Vector2(MIN_ELEMENT_SIZE, MIN_ELEMENT_SIZE);
         }
 
         public void CreateGUI()
         {
-            rootVisualElement.Add(CreateToolTitleVisualElement());
+            rootVisualElement.Add(GenerateToolTitleVisualElement());
             
             ScrollView rootContainer = new ScrollView();
             rootVisualElement.Add(rootContainer);
             
-            rootContainer.Add(CreateSetupTools());
-            rootContainer.Add(CreateUsageTools());
+            rootContainer.Add(GenerateSetupToolsFoldout());
+            rootContainer.Add(GenerateUsageToolsFoldout());
         }
 
-        public static VisualElement CreateToolTitleVisualElement()
+        public static VisualElement GenerateToolTitleVisualElement()
         {
             VisualElement titleContainer = new VisualElement
             {
                 style =
                 {
-                    maxHeight = MIN_SIZE
+                    maxHeight = MIN_ELEMENT_SIZE
                 }
             };
 
@@ -55,7 +50,7 @@ namespace SoundShout.Editor
             return titleContainer;
         }
         
-        private static VisualElement CreateSetupTools()
+        private static Foldout GenerateSetupToolsFoldout()
         {
             Foldout setupFoldout = new Foldout
             {
@@ -69,7 +64,7 @@ namespace SoundShout.Editor
             var openGoogleConsoleButton = Utilities.CreateButton("Open Google Console", () => Process.Start("https://console.developers.google.com"));
             setupFoldout.Add(openGoogleConsoleButton);
 
-            setupFoldout.Add(CreateLocateClientSecretButton());
+            setupFoldout.Add(GetNewLocateClientSecretButton());
 
             var tweakSettingsButton = Utilities.CreateButton("Tweak Settings", SoundShoutSettings.SelectAsset);
             setupFoldout.Add(tweakSettingsButton);
@@ -77,7 +72,7 @@ namespace SoundShout.Editor
             return setupFoldout;
         }
 
-        private static VisualElement CreateUsageTools()
+        private static Foldout GenerateUsageToolsFoldout()
         {
             Foldout setupFoldout = new Foldout
             {
@@ -90,26 +85,16 @@ namespace SoundShout.Editor
             }
             else
             {
-                setupFoldout.Add(Utilities.CreateButton("Open Spreadsheet", OpenGoogleSheetData));
-                setupFoldout.Add(Utilities.CreateButton("Update Spreadsheet", () => { SpreadSheetLogic.UpdateAudioSpreadSheet(SpreedSheetURL); }));
-                setupFoldout.Add(Utilities.CreateButton("Fetch Spreadsheet Changes", () => { SpreadSheetLogic.FetchSpreadsheetChanges(SpreedSheetURL); }));
-                setupFoldout.Add(Utilities.CreateButton("Apply Formatting", () => { SpreadSheetLogic.ApplyFormatting(SpreedSheetURL); }));
-                // setupFoldout.Add(Utilities.CreateButton("Upload Local Changes", () => { SpreadSheetLogic.UploadLocalChanges(SpreedSheetURL); }));
+                setupFoldout.Add(Utilities.CreateButton("Open Spreadsheet", SpreadSheetLogic.OpenSpreadSheet));
+                setupFoldout.Add(Utilities.CreateButton("Update Spreadsheet", SpreadSheetLogic.UpdateAudioSpreadSheet));
+                setupFoldout.Add(Utilities.CreateButton("Fetch Spreadsheet Changes", SpreadSheetLogic.FetchSpreadsheetChanges));
+                setupFoldout.Add(Utilities.CreateButton("Apply Formatting", SpreadSheetLogic.ApplyFormattingToSpreadSheet));
             }
             
             return setupFoldout;
         }
 
-        
-        private static void OpenGoogleSheetData() { Process.Start($"https://docs.google.com/spreadsheets/d/{SpreedSheetURL}"); }
-        
-        private static void AddNewToolbarButton(Toolbar toolbar, string text, Action onClicked)
-        {
-            var button = Utilities.CreateButton(text, onClicked);
-            toolbar.Add(button);
-        }
-        
-        private static VisualElement CreateLocateClientSecretButton()
+        private static Button GetNewLocateClientSecretButton()
         {
             var browseButton = Utilities.CreateButton("Locate \"client_secrets.json\"", () =>
             {
