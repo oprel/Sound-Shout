@@ -8,7 +8,5 @@
         
         
         internal const string CLIENT_SECRET_PATH = EDITOR_WINDOW_FOLDER_PATH + "/client_secret.json";
-
-
     }
 }
