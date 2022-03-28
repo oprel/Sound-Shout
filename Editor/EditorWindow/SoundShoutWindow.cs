@@ -9,6 +9,9 @@ namespace SoundShout.Editor
     public class SoundShoutWindow : EditorWindow
     {
         private const int MIN_ELEMENT_SIZE = 256;
+
+        private const string AUDIO_REFERENCE_ICON_PATH = SoundShoutPaths.EDITOR_WINDOW_FOLDER_PATH + "/SS_Asset_Logo.png";
+        private const string TOOL_LOGO_PATH = SoundShoutPaths.EDITOR_WINDOW_FOLDER_PATH + "/SS_Tool_Logo.png";
         
         [MenuItem("SWM/Sound Shout")]
         public static void OpenWindow()
@@ -16,7 +19,7 @@ namespace SoundShout.Editor
             SoundShoutWindow wnd = GetWindow<SoundShoutWindow>();
             wnd.titleContent = new GUIContent("Sound Shout")
             {
-                image = AssetDatabase.LoadAssetAtPath<Texture>(SoundShoutPaths.AUDIO_REFERENCE_ICON_PATH),
+                image = AssetDatabase.LoadAssetAtPath<Texture>(AUDIO_REFERENCE_ICON_PATH),
             };
             wnd.minSize = new Vector2(MIN_ELEMENT_SIZE, MIN_ELEMENT_SIZE);
         }
@@ -42,7 +45,7 @@ namespace SoundShout.Editor
                 }
             };
 
-            Image soundShoutLogo = Utilities.CreateImage(SoundShoutPaths.TOOL_LOGO_PATH);
+            Image soundShoutLogo = Utilities.CreateImage(TOOL_LOGO_PATH);
             soundShoutLogo.scaleMode = ScaleMode.ScaleToFit;
             
             titleContainer.Add(soundShoutLogo);
@@ -85,7 +88,7 @@ namespace SoundShout.Editor
             }
             else
             {
-                setupFoldout.Add(Utilities.CreateButton("Open Spreadsheet", SpreadSheetLogic.OpenSpreadSheet));
+                setupFoldout.Add(Utilities.CreateButton("Open Spreadsheet", SpreadSheetLogic.OpenSpreadSheetInBrowser));
                 setupFoldout.Add(Utilities.CreateButton("Update Spreadsheet", SpreadSheetLogic.UpdateAudioSpreadSheet));
                 setupFoldout.Add(Utilities.CreateButton("Fetch Spreadsheet Changes", SpreadSheetLogic.FetchSpreadsheetChanges));
                 setupFoldout.Add(Utilities.CreateButton("Apply Formatting", SpreadSheetLogic.ApplyFormattingToSpreadSheet));
@@ -98,7 +101,7 @@ namespace SoundShout.Editor
         {
             var browseButton = Utilities.CreateButton("Locate \"client_secrets.json\"", () =>
             {
-                string path = EditorUtility.OpenFilePanel("Select client_secrets.json file", SoundShoutPaths.TOOL_PATH, "json");
+                string path = EditorUtility.OpenFilePanel("Select client_secrets.json file", SoundShoutPaths.EDITOR_WINDOW_FOLDER_PATH, "json");
                 if (path.Length != 0)
                 {
                     File.WriteAllText(SoundShoutPaths.CLIENT_SECRET_PATH, File.ReadAllText(path));
