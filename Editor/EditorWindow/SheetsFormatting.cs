@@ -134,6 +134,8 @@ namespace SoundShout.Editor
             UpdateImplementationStatusConditionalFormatting(ref batchUpdateSpreadsheetRequest, sheetID);
         }
 
+        private static string[] GetStatusEnumNameArray() { return Enum.GetNames(typeof(AudioReference.ImplementationStatus)); }
+
         private static SetDataValidationRequest GetImplementationStatusValidationRequest(int sheetID)
         {
             var statusValidation = new SetDataValidationRequest
@@ -159,9 +161,9 @@ namespace SoundShout.Editor
 
             // Dynamically fill the condition with values
             var enumNames = GetStatusEnumNameArray();
-            foreach (var enumValue in enumNames)
+            for (int i = 0; i < enumNames.Length; i++)
             {
-                statusValidation.Rule.Condition.Values.Add(new ConditionValue {UserEnteredValue = enumValue});
+                statusValidation.Rule.Condition.Values.Add(new ConditionValue {UserEnteredValue = enumNames[i]});
             }
 
             return statusValidation;
@@ -229,75 +231,22 @@ namespace SoundShout.Editor
 
         private static void UpdateImplementationStatusConditionalFormatting(ref BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest, int sheetID)
         {
-            batchUpdateSpreadsheetRequest.Requests.Add( new Request
+            var settings = SoundShoutSettings.Settings;
+
+            for (int i = 0; i < settings.statusValidations.Length; i++)
             {
-                UpdateConditionalFormatRule = CreateConditionalFormat(sheetID, AudioReference.ImplementationStatus.Delete, new Color
+                var statusValidation = settings.statusValidations[i];
+                
+                batchUpdateSpreadsheetRequest.Requests.Add( new Request
                 {
-                    Red =   (float)255/255,
-                    Green = 0,
-                    Blue =  0
-                })
-            });
-            
-            batchUpdateSpreadsheetRequest.Requests.Add( new Request
-            {
-                UpdateConditionalFormatRule = CreateConditionalFormat(sheetID, AudioReference.ImplementationStatus.TODO, new Color
-                {
-                    Red =   (float)162/255,
-                    Green = (float)210/255,
-                    Blue =  (float)234/255
-                })
-            });
-            
-            batchUpdateSpreadsheetRequest.Requests.Add( new Request
-            {
-                UpdateConditionalFormatRule = CreateConditionalFormat(sheetID, AudioReference.ImplementationStatus.Created, new Color
-                {
-                    Red =   (float)255/255,
-                    Green = (float)211/255,
-                    Blue =  (float)245/255
-                })
-            });
-            
-            batchUpdateSpreadsheetRequest.Requests.Add( new Request
-            {
-                UpdateConditionalFormatRule = CreateConditionalFormat(sheetID, AudioReference.ImplementationStatus.Implemented, new Color
-                {
-                    Red =   (float)255/255,
-                    Green = (float)217/255,
-                    Blue =  (float)102/255
-                })
-            });
-            
-            batchUpdateSpreadsheetRequest.Requests.Add( new Request
-            {
-                UpdateConditionalFormatRule = CreateConditionalFormat(sheetID, AudioReference.ImplementationStatus.Feedback, new Color
-                {
-                    Red =   (float)249/255,
-                    Green = (float)237/255,
-                    Blue =  (float)174/255
-                })
-            });
-            
-            batchUpdateSpreadsheetRequest.Requests.Add( new Request
-            {
-                UpdateConditionalFormatRule = CreateConditionalFormat(sheetID, AudioReference.ImplementationStatus.Iterate, new Color
-                {
-                    Red =   (float)180/255,
-                    Green = (float)167/255,
-                    Blue =  (float)214/255
-                })
-            });
-            
-            batchUpdateSpreadsheetRequest.Requests.Add( new Request
-            {
-                UpdateConditionalFormatRule = CreateConditionalFormat(sheetID, AudioReference.ImplementationStatus.Done, new Color
-                {
-                    Red =   (float)88/255,
-                    Green = (float)239/255,
-                    Blue =  (float)160/255
-                })
-            });
+                    UpdateConditionalFormatRule = CreateConditionalFormat(sheetID, statusValidation.implementationStatus, new Color
+                    {
+                        Red =   statusValidation.color.r,
+                        Green = statusValidation.color.g,
+                        Blue =  statusValidation.color.b
+                    })
+                });
+            }
         }
 
         private static UpdateConditionalFormatRuleRequest CreateConditionalFormat(int sheetID, AudioReference.ImplementationStatus status, Color rowColor)
@@ -315,7 +264,12 @@ namespace SoundShout.Editor
             {
                 Ranges = new List<GridRange>
                 {
-                    GetRowGridRange(sheetID)
+                    new GridRange
+                    {
+                        SheetId = sheetID,
+                        StartColumnIndex = 0,
+                        StartRowIndex = 1
+                    }
                 },
                 BooleanRule = new BooleanRule
                 {
@@ -336,21 +290,6 @@ namespace SoundShout.Editor
                     }
                 }
             };
-        }
-
-        private static GridRange GetRowGridRange(int sheetId)
-        {
-            return new GridRange
-            {
-                SheetId = sheetId,
-                StartColumnIndex = 0,
-                StartRowIndex = 1
-            };
-        }
-        
-        private static string[] GetStatusEnumNameArray()
-        {
-            return Enum.GetNames(typeof(AudioReference.ImplementationStatus));
         }
         
         #endregion

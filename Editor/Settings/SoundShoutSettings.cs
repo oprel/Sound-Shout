@@ -10,7 +10,7 @@ namespace SoundShout.Editor
     {
         [SerializeField] public string spreadsheetURL;
         
-        [SerializeField] internal List<ColorScheme> colorSchemes;
+        [SerializeField] internal ColorScheme[] statusValidations;
         [Serializable] internal class ColorScheme
         {
             public AudioReference.ImplementationStatus implementationStatus;
