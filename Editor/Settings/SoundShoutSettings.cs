@@ -32,9 +32,7 @@ namespace SoundShout.Editor
             return settings;
         }
 
-        internal static SerializedObject GetSerializedSettings() { return new SerializedObject(GetOrCreateSettings()); }
-        
-        internal static bool IsClientSecretsFileAvailable() { return File.Exists(SoundShoutPaths.CLIENT_SECRET_PATH); }
+        internal static bool IsClientSecretsFileAvailable() { return !string.IsNullOrEmpty(AssetDatabase.AssetPathToGUID(SoundShoutPaths.CLIENT_SECRET_PATH)); }
         internal static void SelectAsset() { Selection.SetActiveObjectWithContext(Settings, null); }
 
     }
