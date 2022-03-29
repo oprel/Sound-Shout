@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -51,6 +52,12 @@ namespace SoundShout.Editor
 
             button.clicked += onClicked;
             return button;
+        }
+        
+        internal static void AddNewToolbarButton(Toolbar toolbar, string text, Action onClicked)
+        {
+            var button = Utilities.CreateButton(text, onClicked);
+            toolbar.Add(button);
         }
     }
 }
